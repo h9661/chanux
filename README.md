@@ -6,12 +6,21 @@ A hobby operating system built from scratch in C, designed for learning low-leve
 
 ChanUX is a simple operating system kernel written in C and x86 assembly. This project aims to explore fundamental OS concepts including:
 
-- Bootloading and system initialization
+- Bootloading and system initialization ✅
 - Memory management (paging, virtual memory)
 - Process management and scheduling
 - Interrupt handling and system calls
 - Basic device drivers
 - File system implementation
+
+### Key Features Implemented
+
+- **Multiboot Bootloader**: Compatible with GRUB and other multiboot loaders
+- **Protected Mode**: Full 32-bit protected mode with flat memory model
+- **GDT (Global Descriptor Table)**: Proper segmentation for kernel and user space
+- **IDT (Interrupt Descriptor Table)**: Framework for interrupt handling
+- **VGA Terminal**: Text mode display driver with color support and scrolling
+- **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
 
@@ -33,15 +42,25 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 ```
 chanux/
 ├── README.md           # This file
-├── Makefile           # Build configuration
+├── Makefile           # Build configuration with cross-compiler support
 ├── src/               # Source code
 │   ├── boot/          # Bootloader and early initialization
+│   │   └── boot.asm   # Multiboot-compliant bootloader
 │   ├── kernel/        # Kernel core code
-│   ├── drivers/       # Device drivers
+│   │   ├── kernel.c   # Main kernel entry point
+│   │   ├── gdt.c      # Global Descriptor Table implementation
+│   │   ├── gdt_flush.asm # GDT loading assembly routine
+│   │   ├── idt.c      # Interrupt Descriptor Table implementation
+│   │   ├── idt_load.asm  # IDT loading assembly routine
+│   │   ├── terminal.c # VGA text mode terminal driver
+│   │   └── linker.ld  # Linker script for kernel memory layout
+│   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
+│   │   └── string.c   # Memory manipulation functions
 │   └── include/       # Header files
-├── build/             # Build output directory
-├── iso/               # ISO creation directory
+│       └── string.h   # String/memory function declarations
+├── build/             # Build output directory (generated)
+├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
 
 ```
@@ -85,17 +104,32 @@ make run
 1. **Write code** in appropriate directories
 2. **Build** using `make`
 3. **Test** in QEMU/Bochs
-4. **Debug** using GDB with QEMU
-5. **Iterate** and improve
+4. **Debug** using GDB with QEMU: `make debug`
+5. **Clean** build artifacts: `make clean`
+6. **Iterate** and improve
+
+### 4. Testing the Current Build
+
+After building, you should see the following when running the kernel:
+```
+ChanUX kernel booting...
+GDT installed
+IDT installed
+Welcome to ChanUX!
+```
+
+## Current Status
+
+ChanUX has completed Phase 1 of development with a functional bootloader and basic system initialization. The kernel successfully boots in protected mode and displays output to the screen.
 
 ## Features Roadmap
 
-### Phase 1: Basic Boot (Current)
-- [ ] Basic bootloader
-- [ ] Protected mode setup
-- [ ] Basic VGA text mode output
-- [ ] Global Descriptor Table (GDT)
-- [ ] Interrupt Descriptor Table (IDT)
+### Phase 1: Basic Boot (Completed) ✅
+- [x] Basic bootloader - Multiboot-compliant bootloader that loads the kernel
+- [x] Protected mode setup - 32-bit protected mode with flat memory model
+- [x] Basic VGA text mode output - Terminal driver with scrolling support
+- [x] Global Descriptor Table (GDT) - Memory segmentation for kernel/user space
+- [x] Interrupt Descriptor Table (IDT) - Basic IDT structure (handlers not yet implemented)
 
 ### Phase 2: Core Kernel
 - [ ] Physical memory manager
@@ -156,3 +190,25 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Note**: Operating system development is a complex topic. Be prepared for challenges, lots of debugging, and deep dives into computer architecture. The journey is rewarding!
+
+## Technical Details
+
+### Memory Layout
+- Kernel loads at 1MB (0x100000) as per Multiboot specification
+- Stack: 16KB allocated in BSS section
+- VGA Text Buffer: Direct memory access at 0xB8000
+
+### Boot Process
+1. GRUB loads the multiboot header and kernel
+2. Boot assembly code sets up initial stack
+3. Control transfers to kernel_main()
+4. GDT is installed for proper segmentation
+5. IDT is installed for interrupt handling
+6. Terminal is initialized for output
+7. Kernel enters idle loop
+
+### Code Organization
+- Assembly files use NASM syntax
+- C code follows C99 standard
+- All structures are packed to match x86 requirements
+- Comprehensive comments explain low-level details
