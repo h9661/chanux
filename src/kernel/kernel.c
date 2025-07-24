@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../include/multiboot.h"
+#include "../include/pmm.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */
@@ -25,6 +27,15 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     terminal_initialize();
     terminal_writestring("ChanUX kernel booting...\n");
     
+    /* Verify multiboot magic number */
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+        terminal_writestring("ERROR: Invalid multiboot magic number!\n");
+        return;
+    }
+    
+    /* Cast address to multiboot info structure */
+    struct multiboot_info *mboot_info = (struct multiboot_info *)addr;
+    
     /* Install Global Descriptor Table
      * The GDT defines memory segments for code and data in protected mode
      * This is essential for proper memory protection and privilege levels
@@ -39,8 +50,22 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     idt_install();
     terminal_writestring("IDT installed\n");
     
+    /* Initialize Physical Memory Manager
+     * The PMM manages allocation of physical memory pages using a bitmap
+     * It needs the multiboot info to detect available memory regions
+     */
+    pmm_init(mboot_info);
+    
+    /* Run PMM unit tests */
+    void pmm_run_tests(void);
+    pmm_run_tests();
+    
+    /* Print memory statistics */
+    terminal_writestring("\nFinal memory state:\n");
+    pmm_print_memory_map();
+    
     /* Kernel initialization complete */
-    terminal_writestring("Welcome to ChanUX!\n");
+    terminal_writestring("\nWelcome to ChanUX!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
