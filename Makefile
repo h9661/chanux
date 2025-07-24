@@ -24,7 +24,8 @@ LD = i686-elf-ld
 # -O2: Optimization level 2 (good balance of speed and size)
 # -Wall: Enable all common warnings
 # -Wextra: Enable extra warning flags
-CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+# -I$(SRC_DIR)/include: Add include directory to header search path
+CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I$(SRC_DIR)/include
 
 # Linker flags:
 # -T src/kernel/linker.ld: Use custom linker script for kernel memory layout
