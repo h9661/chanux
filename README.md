@@ -20,6 +20,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **GDT (Global Descriptor Table)**: Proper segmentation for kernel and user space
 - **IDT (Interrupt Descriptor Table)**: Framework for interrupt handling
 - **VGA Terminal**: Text mode display driver with color support and scrolling
+- **Physical Memory Manager**: Bitmap-based allocator with multiboot memory detection
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -53,12 +54,16 @@ chanux/
 │   │   ├── idt.c      # Interrupt Descriptor Table implementation
 │   │   ├── idt_load.asm  # IDT loading assembly routine
 │   │   ├── terminal.c # VGA text mode terminal driver
+│   │   ├── pmm.c      # Physical memory manager implementation
+│   │   ├── pmm_test.c # PMM unit tests
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
 │   │   └── string.c   # Memory manipulation functions
 │   └── include/       # Header files
-│       └── string.h   # String/memory function declarations
+│       ├── string.h   # String/memory function declarations
+│       ├── multiboot.h # Multiboot specification structures
+│       └── pmm.h      # Physical memory manager interface
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -115,12 +120,39 @@ After building, you should see the following when running the kernel:
 ChanUX kernel booting...
 GDT installed
 IDT installed
+Initializing Physical Memory Manager...
+Total memory: XX MB (XXXX pages)
+Memory map:
+  Region: 0x0 - 0xXXXXX (X MB) - Available
+  [Additional memory regions...]
+PMM initialized: XXXX free pages (XX MB)
+
+Running PMM unit tests...
+========================
+[PASS] Single page allocation/free
+[PASS] Multiple page allocation/free
+[PASS] Allocation uniqueness
+[PASS] Free and reallocate
+[PASS] Memory statistics tracking
+[PASS] Contiguous page allocation
+[PASS] Region initialization
+
+Test Results: 7 passed, 0 failed
+All tests passed!
+
+Final memory state:
+Physical Memory Map:
+Total pages: XXXX
+Used pages: XXX
+Free pages: XXXX
+First 10 pages: UUUUUUUUFF
+
 Welcome to ChanUX!
 ```
 
 ## Current Status
 
-ChanUX has completed Phase 1 of development with a functional bootloader and basic system initialization. The kernel successfully boots in protected mode and displays output to the screen.
+ChanUX has completed Phase 1 and the first part of Phase 2. The kernel successfully boots in protected mode, manages physical memory, and displays output to the screen.
 
 ## Features Roadmap
 
@@ -131,8 +163,8 @@ ChanUX has completed Phase 1 of development with a functional bootloader and bas
 - [x] Global Descriptor Table (GDT) - Memory segmentation for kernel/user space
 - [x] Interrupt Descriptor Table (IDT) - Basic IDT structure (handlers not yet implemented)
 
-### Phase 2: Core Kernel
-- [ ] Physical memory manager
+### Phase 2: Core Kernel (In Progress)
+- [x] Physical memory manager - Bitmap-based page allocator with memory detection
 - [ ] Virtual memory (paging)
 - [ ] Heap allocator
 - [ ] Basic interrupt handlers
@@ -197,6 +229,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Kernel loads at 1MB (0x100000) as per Multiboot specification
 - Stack: 16KB allocated in BSS section
 - VGA Text Buffer: Direct memory access at 0xB8000
+- PMM Bitmap: Located at 2MB (0x200000)
+- Page Size: 4KB (4096 bytes)
 
 ### Boot Process
 1. GRUB loads the multiboot header and kernel
@@ -205,10 +239,30 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 4. GDT is installed for proper segmentation
 5. IDT is installed for interrupt handling
 6. Terminal is initialized for output
-7. Kernel enters idle loop
+7. Physical Memory Manager initializes:
+   - Detects available memory from multiboot info
+   - Sets up bitmap allocator at 2MB
+   - Marks kernel and bitmap memory as used
+   - Runs unit tests to verify functionality
+8. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
 - C code follows C99 standard
 - All structures are packed to match x86 requirements
 - Comprehensive comments explain low-level details
+
+### Physical Memory Manager
+- **Algorithm**: Bitmap allocator (1 bit per 4KB page)
+- **Memory Detection**: Uses multiboot memory map
+- **Features**:
+  - Single and multiple page allocation
+  - Contiguous page allocation
+  - Memory region marking (used/free)
+  - Statistics tracking
+  - Built-in unit tests
+- **API**:
+  - `pmm_alloc_page()` - Allocate single page
+  - `pmm_alloc_pages(count)` - Allocate contiguous pages
+  - `pmm_free_page(addr)` - Free single page
+  - `pmm_free_pages(addr, count)` - Free multiple pages
