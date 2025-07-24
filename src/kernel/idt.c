@@ -38,6 +38,9 @@ struct idt_ptr idtp;
 /* External assembly function to load the IDT */
 extern void idt_load(uint32_t);
 
+/* External ISR handlers */
+extern void isr14(void);  /* Page fault handler */
+
 /*
  * idt_set_gate - Set up an IDT entry
  * @num: Interrupt number (0-255)
@@ -83,6 +86,12 @@ void idt_install() {
      * rather than jumping to random memory
      */
     memset(&idt, 0, sizeof(struct idt_entry) * 256);
+    
+    /* Install exception handlers */
+    /* ISR 14: Page Fault
+     * 0x8E = Present, DPL=0, 32-bit interrupt gate
+     */
+    idt_set_gate(14, (uint32_t)isr14, 0x08, 0x8E);
     
     /* Load the IDT into the IDTR register
      * After this, the CPU will use our IDT for interrupt handling
