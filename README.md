@@ -23,6 +23,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **Physical Memory Manager**: Bitmap-based allocator with multiboot memory detection
 - **Virtual Memory Manager**: x86 paging with dynamic page allocation and mapping
 - **Heap Allocator**: Dynamic memory allocation with malloc/free/calloc/realloc
+- **PIC Configuration**: 8259A PIC initialization with IRQ remapping and handling
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -64,6 +65,9 @@ chanux/
 │   │   ├── isr.asm    # Interrupt service routines
 │   │   ├── heap.c     # Heap allocator implementation
 │   │   ├── heap_test.c # Heap allocator unit tests
+│   │   ├── pic.c      # Programmable Interrupt Controller implementation
+│   │   ├── pic_test.c # PIC test code with timer and keyboard
+│   │   ├── irq.asm    # IRQ handler assembly stubs
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -74,7 +78,8 @@ chanux/
 │       ├── pmm.h      # Physical memory manager interface
 │       ├── paging.h   # Paging structures and constants
 │       ├── vmm.h      # Virtual memory manager interface
-│       └── heap.h     # Heap allocator interface
+│       ├── heap.h     # Heap allocator interface
+│       └── pic.h      # PIC constants and function declarations
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -131,6 +136,7 @@ After building, you should see the following when running the kernel:
 ChanUX kernel booting...
 GDT installed
 IDT installed
+PIC initialized: IRQs remapped to 0x20-0x2F
 Initializing Physical Memory Manager...
 Total memory: XX MB (XXXX pages)
 Memory map:
@@ -221,7 +227,45 @@ Address     Size      Status
 --------------------------------
 0x10000000  XXXX bytes  FREE
 
-Welcome to ChanUX with Virtual Memory and Heap!
+Running PIC tests...
+===================
+
+PIC Status:
+IRQ Mask: 0xFFFF
+IRR: 0x0000
+ISR: 0x0000
+Enabled IRQs: None
+Timer initialized at 100 Hz
+
+Enabling timer interrupt (IRQ0)...
+Enabling keyboard interrupt (IRQ1)...
+
+PIC Status:
+IRQ Mask: 0xFFFC
+IRR: 0x0000
+ISR: 0x0000
+Enabled IRQs: 0, 1
+
+Enabling CPU interrupts...
+Waiting for timer interrupts...
+Timer test complete: 10 ticks in ~100ms
+Measured frequency: ~100 Hz
+
+Press any key to test keyboard interrupt...
+Keyboard interrupt! Scancode: 0xXX
+
+Disabling timer and keyboard interrupts...
+
+PIC Status:
+IRQ Mask: 0xFFFF
+IRR: 0x0000
+ISR: 0x0000
+Enabled IRQs: None
+
+PIC tests completed successfully!
+Total timer ticks: XX
+
+Welcome to ChanUX with Virtual Memory, Heap, and Interrupts!
 ```
 
 ## Current Status
@@ -242,7 +286,7 @@ ChanUX has completed Phase 1 and significant portions of Phase 2. The kernel suc
 - [x] Virtual memory (paging) - x86 paging with page tables and address translation
 - [x] Heap allocator - Dynamic memory allocation with malloc/free
 - [x] Basic interrupt handlers - Page fault handler implemented
-- [ ] PIC configuration
+- [x] PIC configuration - 8259A PIC initialized with IRQ remapping
 
 ### Phase 3: Essential Features
 - [ ] Keyboard driver
@@ -314,23 +358,28 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 3. Control transfers to kernel_main()
 4. GDT is installed for proper segmentation
 5. IDT is installed for interrupt handling
-6. Terminal is initialized for output
-7. Physical Memory Manager initializes:
+6. PIC is initialized and IRQs remapped to 0x20-0x2F
+7. Terminal is initialized for output
+8. Physical Memory Manager initializes:
    - Detects available memory from multiboot info
    - Sets up bitmap allocator at 2MB
    - Marks kernel and bitmap memory as used
    - Runs unit tests to verify functionality
-8. Virtual Memory Manager initializes:
+9. Virtual Memory Manager initializes:
    - Creates kernel page directory
    - Identity maps first 4MB for kernel
    - Enables paging (CR0.PG = 1)
    - Installs page fault handler
    - Runs unit tests to verify paging
-9. Heap Allocator initializes:
+10. Heap Allocator initializes:
    - Maps 256 pages (1MB) at 256MB mark
    - Sets up linked list of memory blocks
    - Runs unit tests to verify allocation
-10. Kernel enters idle loop
+11. PIC test runs:
+   - Enables timer (IRQ0) and keyboard (IRQ1) interrupts
+   - Tests interrupt handling with timer ticks
+   - Demonstrates keyboard interrupt on keypress
+12. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -397,3 +446,25 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `realloc(ptr, new_size)` - Resize memory block
   - `heap_get_stats()` - Get heap usage statistics
   - `heap_check_integrity()` - Verify heap consistency
+
+### Programmable Interrupt Controller (8259A PIC)
+- **Purpose**: Manage hardware interrupts and deliver them to the CPU
+- **Configuration**: Master-slave cascade (handles 16 IRQs total)
+- **IRQ Remapping**: Remaps IRQs 0-15 to interrupt vectors 0x20-0x2F
+- **Features**:
+  - IRQ masking/unmasking
+  - End of Interrupt (EOI) handling
+  - Spurious interrupt detection
+  - IRQ priority management
+  - Interrupt status tracking
+- **Supported IRQs**:
+  - IRQ0: Timer (PIT)
+  - IRQ1: Keyboard
+  - IRQ2: Cascade (connects slave PIC)
+  - IRQ3-15: Available for other devices
+- **API**:
+  - `pic_init()` - Initialize and remap PICs
+  - `pic_enable_irq(irq)` - Enable specific IRQ
+  - `pic_disable_irq(irq)` - Disable specific IRQ
+  - `pic_send_eoi(irq)` - Send End of Interrupt signal
+  - `pic_get_irq_mask()` - Get current IRQ mask

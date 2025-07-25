@@ -187,3 +187,39 @@ void terminal_write(const char* data, size_t size) {
 void terminal_writestring(const char* data) {
     terminal_write(data, strlen(data));
 }
+
+/*
+ * terminal_write_hex - Write a hexadecimal number
+ * @value: Value to write in hexadecimal
+ */
+void terminal_write_hex(uint8_t value) {
+    const char hex_chars[] = "0123456789ABCDEF";
+    terminal_putchar(hex_chars[(value >> 4) & 0xF]);
+    terminal_putchar(hex_chars[value & 0xF]);
+}
+
+/*
+ * terminal_write_dec - Write a decimal number
+ * @value: Value to write in decimal
+ */
+void terminal_write_dec(uint32_t value) {
+    if (value == 0) {
+        terminal_putchar('0');
+        return;
+    }
+    
+    /* Buffer to store digits (max 10 digits for 32-bit) */
+    char buffer[11];
+    int i = 0;
+    
+    /* Extract digits in reverse order */
+    while (value > 0) {
+        buffer[i++] = '0' + (value % 10);
+        value /= 10;
+    }
+    
+    /* Print digits in correct order */
+    while (i > 0) {
+        terminal_putchar(buffer[--i]);
+    }
+}
