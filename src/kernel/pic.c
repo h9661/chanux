@@ -19,7 +19,7 @@ void pic_print_status(void);
 
 /* External interrupt handlers */
 extern void keyboard_interrupt_handler(void);
-extern void timer_handler(void);
+extern void timer_interrupt_handler(void);
 
 /* Current IRQ mask (1 = disabled, 0 = enabled) */
 static uint16_t irq_mask = 0xFFFF;  /* Start with all IRQs disabled */
@@ -197,7 +197,7 @@ void irq_handler(uint32_t irq_num) {
     /* Call specific IRQ handlers based on irq_num */
     switch (irq_num) {
         case 0:  /* Timer */
-            timer_handler();
+            timer_interrupt_handler();
             break;
         case 1:  /* Keyboard */
             keyboard_interrupt_handler();
