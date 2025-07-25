@@ -21,6 +21,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **IDT (Interrupt Descriptor Table)**: Framework for interrupt handling
 - **VGA Terminal**: Text mode display driver with color support and scrolling
 - **Physical Memory Manager**: Bitmap-based allocator with multiboot memory detection
+- **Virtual Memory Manager**: x86 paging with dynamic page allocation and mapping
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -56,6 +57,10 @@ chanux/
 │   │   ├── terminal.c # VGA text mode terminal driver
 │   │   ├── pmm.c      # Physical memory manager implementation
 │   │   ├── pmm_test.c # PMM unit tests
+│   │   ├── vmm.c      # Virtual memory manager implementation
+│   │   ├── vmm_test.c # VMM unit tests
+│   │   ├── paging_asm.asm # Paging assembly routines
+│   │   ├── isr.asm    # Interrupt service routines
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -63,7 +68,9 @@ chanux/
 │   └── include/       # Header files
 │       ├── string.h   # String/memory function declarations
 │       ├── multiboot.h # Multiboot specification structures
-│       └── pmm.h      # Physical memory manager interface
+│       ├── pmm.h      # Physical memory manager interface
+│       ├── paging.h   # Paging structures and constants
+│       └── vmm.h      # Virtual memory manager interface
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -148,11 +155,41 @@ Free pages: XXXX
 First 10 pages: UUUUUUUUFF
 
 Welcome to ChanUX!
+
+Initializing Virtual Memory Manager...
+Identity mapping kernel memory (0-4MB)...
+Enabling paging...
+Virtual Memory Manager initialized
+
+Running VMM unit tests...
+========================
+[PASS] Basic page mapping
+[PASS] Page unmapping
+[PASS] Range mapping
+[PASS] Virtual page allocation
+[PASS] Multiple virtual page allocation
+[PASS] Page directory creation
+[PASS] Address translation with offset
+
+Test Results: 7 passed, 0 failed
+All tests passed!
+
+Testing virtual memory access...
+Virtual memory write/read successful!
+
+Final memory state:
+Physical Memory Map:
+Total pages: XXXX
+Used pages: XXX
+Free pages: XXXX
+First 10 pages: UUUUUUUUFF
+
+Welcome to ChanUX with Virtual Memory!
 ```
 
 ## Current Status
 
-ChanUX has completed Phase 1 and the first part of Phase 2. The kernel successfully boots in protected mode, manages physical memory, and displays output to the screen.
+ChanUX has completed Phase 1 and significant portions of Phase 2. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, and displays output to the screen.
 
 ## Features Roadmap
 
@@ -165,9 +202,9 @@ ChanUX has completed Phase 1 and the first part of Phase 2. The kernel successfu
 
 ### Phase 2: Core Kernel (In Progress)
 - [x] Physical memory manager - Bitmap-based page allocator with memory detection
-- [ ] Virtual memory (paging)
+- [x] Virtual memory (paging) - x86 paging with page tables and address translation
 - [ ] Heap allocator
-- [ ] Basic interrupt handlers
+- [x] Basic interrupt handlers - Page fault handler implemented
 - [ ] PIC configuration
 
 ### Phase 3: Essential Features
@@ -244,7 +281,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Sets up bitmap allocator at 2MB
    - Marks kernel and bitmap memory as used
    - Runs unit tests to verify functionality
-8. Kernel enters idle loop
+8. Virtual Memory Manager initializes:
+   - Creates kernel page directory
+   - Identity maps first 4MB for kernel
+   - Enables paging (CR0.PG = 1)
+   - Installs page fault handler
+   - Runs unit tests to verify paging
+9. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -266,3 +309,23 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `pmm_alloc_pages(count)` - Allocate contiguous pages
   - `pmm_free_page(addr)` - Free single page
   - `pmm_free_pages(addr, count)` - Free multiple pages
+
+### Virtual Memory Manager
+- **Architecture**: x86 32-bit paging (4KB pages)
+- **Page Tables**: Two-level hierarchy (Page Directory + Page Tables)
+- **Features**:
+  - Dynamic page table allocation
+  - Virtual-to-physical address mapping
+  - Page fault handling
+  - Identity mapping for kernel space
+  - Page directory cloning (for process creation)
+  - TLB management
+- **Memory Layout**:
+  - 0x00000000-0x3FFFFFFF: Kernel space (1GB)
+  - 0x40000000-0xBFFFFFFF: User space (2GB)
+  - 0xC0000000-0xFFFFFFFF: Reserved (1GB)
+- **API**:
+  - `vmm_map_page()` - Map virtual to physical address
+  - `vmm_unmap_page()` - Unmap virtual address
+  - `vmm_alloc_page()` - Allocate and map virtual page
+  - `vmm_create_page_directory()` - Create new address space

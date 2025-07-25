@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include "../include/multiboot.h"
 #include "../include/pmm.h"
+#include "../include/vmm.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */
@@ -60,12 +61,46 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     void pmm_run_tests(void);
     pmm_run_tests();
     
+    /* Initialize Virtual Memory Manager
+     * The VMM provides virtual memory mapping using x86 paging
+     * It sets up page tables and enables memory protection
+     */
+    vmm_init();
+    
+    /* Run VMM unit tests */
+    void vmm_run_tests(void);
+    vmm_run_tests();
+    
+    /* Test paging by accessing mapped memory */
+    terminal_writestring("\nTesting virtual memory access...\n");
+    
+    /* Map a test page */
+    uint32_t test_virt = 0x20000000;  /* 512MB */
+    uint32_t test_result = vmm_alloc_page(vmm_get_current_directory(), 
+                                         test_virt, PAGE_PRESENT | PAGE_WRITABLE);
+    
+    if (test_result != 0) {
+        /* Write to the virtual address */
+        uint32_t* test_ptr = (uint32_t*)test_virt;
+        *test_ptr = 0xDEADBEEF;
+        
+        /* Read it back */
+        if (*test_ptr == 0xDEADBEEF) {
+            terminal_writestring("Virtual memory write/read successful!\n");
+        } else {
+            terminal_writestring("Virtual memory test failed!\n");
+        }
+        
+        /* Clean up */
+        vmm_free_page(vmm_get_current_directory(), test_virt);
+    }
+    
     /* Print memory statistics */
     terminal_writestring("\nFinal memory state:\n");
     pmm_print_memory_map();
     
     /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX!\n");
+    terminal_writestring("\nWelcome to ChanUX with Virtual Memory!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
