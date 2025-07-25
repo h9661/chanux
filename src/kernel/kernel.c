@@ -8,6 +8,7 @@
 #include "../include/multiboot.h"
 #include "../include/pmm.h"
 #include "../include/vmm.h"
+#include "../include/heap.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */
@@ -95,12 +96,56 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         vmm_free_page(vmm_get_current_directory(), test_virt);
     }
     
+    /* Initialize Heap Allocator
+     * The heap provides dynamic memory allocation (malloc/free)
+     * It uses virtual memory pages allocated by the VMM
+     */
+    heap_init();
+    
+    /* Run heap allocator tests */
+    void heap_run_tests(void);
+    heap_run_tests();
+    
+    /* Test heap with practical example */
+    terminal_writestring("\nTesting heap allocation...\n");
+    
+    /* Allocate some strings */
+    char* str1 = (char*)malloc(50);
+    char* str2 = (char*)malloc(100);
+    
+    if (str1 && str2) {
+        /* Copy test strings */
+        const char* test1 = "Hello from heap!";
+        const char* test2 = "Dynamic memory allocation works!";
+        
+        for (int i = 0; test1[i]; i++) str1[i] = test1[i];
+        str1[16] = '\0';
+        
+        for (int i = 0; test2[i]; i++) str2[i] = test2[i];
+        str2[32] = '\0';
+        
+        terminal_writestring("Allocated strings:\n");
+        terminal_writestring("  str1: ");
+        terminal_writestring(str1);
+        terminal_writestring("\n  str2: ");
+        terminal_writestring(str2);
+        terminal_writestring("\n");
+        
+        /* Free memory */
+        free(str1);
+        free(str2);
+        terminal_writestring("Memory freed successfully\n");
+    }
+    
+    /* Print heap debug info */
+    heap_print_blocks();
+    
     /* Print memory statistics */
     terminal_writestring("\nFinal memory state:\n");
     pmm_print_memory_map();
     
     /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX with Virtual Memory!\n");
+    terminal_writestring("\nWelcome to ChanUX with Virtual Memory and Heap!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
