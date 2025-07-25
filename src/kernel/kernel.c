@@ -9,6 +9,7 @@
 #include "../include/pmm.h"
 #include "../include/vmm.h"
 #include "../include/heap.h"
+#include "../include/pic.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */
@@ -51,6 +52,13 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     idt_install();
     terminal_writestring("IDT installed\n");
+    
+    /* Initialize Programmable Interrupt Controller
+     * The PIC manages hardware interrupts (IRQs) and remaps them
+     * to avoid conflicts with CPU exceptions
+     */
+    pic_init();
+    terminal_writestring("PIC initialized\n");
     
     /* Initialize Physical Memory Manager
      * The PMM manages allocation of physical memory pages using a bitmap
@@ -140,12 +148,16 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     /* Print heap debug info */
     heap_print_blocks();
     
+    /* Run PIC tests */
+    void pic_run_tests(void);
+    pic_run_tests();
+    
     /* Print memory statistics */
     terminal_writestring("\nFinal memory state:\n");
     pmm_print_memory_map();
     
     /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX with Virtual Memory and Heap!\n");
+    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, and Interrupts!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
