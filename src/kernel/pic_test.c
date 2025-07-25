@@ -57,55 +57,7 @@ void timer_handler(void) {
     timer_ticks++;
 }
 
-/*
- * Keyboard interrupt handler (called from IRQ1)
- */
-void keyboard_handler(void) {
-    /* Read scan code from keyboard data port */
-    uint8_t scancode = inb(0x60);
-    
-    terminal_writestring("Keyboard interrupt! Scancode: 0x");
-    terminal_write_hex(scancode);
-    terminal_writestring("\n");
-}
-
-/*
- * Updated IRQ handler with specific device handlers
- */
-void irq_handler(uint32_t irq_num) {
-    /* Handle spurious IRQs */
-    if (irq_num == 7) {
-        uint16_t isr = pic_get_isr();
-        if (!(isr & (1 << 7))) {
-            return;
-        }
-    } else if (irq_num == 15) {
-        uint16_t isr = pic_get_isr();
-        if (!(isr & (1 << 15))) {
-            outb(PIC1_COMMAND, PIC_EOI);
-            return;
-        }
-    }
-    
-    /* Call specific handlers based on IRQ number */
-    switch (irq_num) {
-        case 0:  /* Timer */
-            timer_handler();
-            break;
-        case 1:  /* Keyboard */
-            keyboard_handler();
-            break;
-        default:
-            /* Unhandled IRQ */
-            terminal_writestring("Unhandled IRQ: ");
-            terminal_write_dec(irq_num);
-            terminal_writestring("\n");
-            break;
-    }
-    
-    /* Send EOI */
-    pic_send_eoi(irq_num);
-}
+/* Timer handler is now called from pic.c's irq_handler */
 
 /*
  * Run PIC tests
