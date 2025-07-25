@@ -24,6 +24,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **Virtual Memory Manager**: x86 paging with dynamic page allocation and mapping
 - **Heap Allocator**: Dynamic memory allocation with malloc/free/calloc/realloc
 - **PIC Configuration**: 8259A PIC initialization with IRQ remapping and handling
+- **Keyboard Driver**: PS/2 keyboard support with scancode translation and buffering
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -68,6 +69,8 @@ chanux/
 │   │   ├── pic.c      # Programmable Interrupt Controller implementation
 │   │   ├── pic_test.c # PIC test code with timer and keyboard
 │   │   ├── irq.asm    # IRQ handler assembly stubs
+│   │   ├── keyboard.c # PS/2 keyboard driver implementation
+│   │   ├── keyboard_test.c # Keyboard driver tests
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -79,7 +82,8 @@ chanux/
 │       ├── paging.h   # Paging structures and constants
 │       ├── vmm.h      # Virtual memory manager interface
 │       ├── heap.h     # Heap allocator interface
-│       └── pic.h      # PIC constants and function declarations
+│       ├── pic.h      # PIC constants and function declarations
+│       └── keyboard.h # Keyboard driver interface and scancodes
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -265,12 +269,53 @@ Enabled IRQs: None
 PIC tests completed successfully!
 Total timer ticks: XX
 
-Welcome to ChanUX with Virtual Memory, Heap, and Interrupts!
+Initializing keyboard driver...
+Keyboard driver initialized
+
+Running keyboard driver tests...
+===============================
+
+=== Character Input Test ===
+Type some text (press ESC to continue):
+> Hello, ChanUX!
+
+=== Modifier Keys Test ===
+Press modifier keys (Shift, Ctrl, Alt, Caps Lock)
+Press 'q' to continue
+
+Modifiers: LSHIFT
+Modifiers: LCTRL
+Modifiers: CAPS
+
+=== Scancode Test ===
+Press keys to see their scancodes
+Press F1 to continue
+
+Scancode: 0x1E (pressed) ASCII: 'a' (0x61)
+Scancode: 0x1E (released)
+
+=== Buffer Test ===
+Type quickly, then press Enter to see buffered input:
+Buffer contents: "test123"
+
+=== Typing Test ===
+Type the following text:
+The quick brown fox jumps over the lazy dog.
+
+Your input:
+> The quick brown fox jumps over the lazy dog.
+
+Test complete! Errors: 0
+
+=== Keyboard Test Summary ===
+All keyboard tests completed!
+
+Welcome to ChanUX with Virtual Memory, Heap, Interrupts, and Keyboard!
 ```
 
 ## Current Status
 
-ChanUX has completed Phase 1 and significant portions of Phase 2. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, and displays output to the screen.
+ChanUX has completed Phase 1, Phase 2, and begun Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, and accepts keyboard input.
 
 ## Features Roadmap
 
@@ -281,15 +326,15 @@ ChanUX has completed Phase 1 and significant portions of Phase 2. The kernel suc
 - [x] Global Descriptor Table (GDT) - Memory segmentation for kernel/user space
 - [x] Interrupt Descriptor Table (IDT) - Basic IDT structure (handlers not yet implemented)
 
-### Phase 2: Core Kernel (In Progress)
+### Phase 2: Core Kernel (Completed) ✅
 - [x] Physical memory manager - Bitmap-based page allocator with memory detection
 - [x] Virtual memory (paging) - x86 paging with page tables and address translation
 - [x] Heap allocator - Dynamic memory allocation with malloc/free
 - [x] Basic interrupt handlers - Page fault handler implemented
 - [x] PIC configuration - 8259A PIC initialized with IRQ remapping
 
-### Phase 3: Essential Features
-- [ ] Keyboard driver
+### Phase 3: Essential Features (In Progress)
+- [x] Keyboard driver - PS/2 keyboard with scancode translation and buffering
 - [ ] Timer/PIT driver
 - [ ] Basic scheduler
 - [ ] System calls interface
@@ -375,11 +420,21 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Maps 256 pages (1MB) at 256MB mark
    - Sets up linked list of memory blocks
    - Runs unit tests to verify allocation
-11. PIC test runs:
+11. Keyboard driver initializes:
+   - Configures PS/2 keyboard controller
+   - Sets up keyboard buffer
+   - Enables keyboard interrupt (IRQ1)
+12. PIC test runs:
    - Enables timer (IRQ0) and keyboard (IRQ1) interrupts
    - Tests interrupt handling with timer ticks
    - Demonstrates keyboard interrupt on keypress
-12. Kernel enters idle loop
+13. Keyboard tests run:
+   - Character input and display
+   - Modifier key detection
+   - Scancode reading
+   - Buffer management
+   - Typing accuracy test
+14. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -468,3 +523,26 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `pic_disable_irq(irq)` - Disable specific IRQ
   - `pic_send_eoi(irq)` - Send End of Interrupt signal
   - `pic_get_irq_mask()` - Get current IRQ mask
+
+### PS/2 Keyboard Driver
+- **Controller**: 8042 PS/2 controller at ports 0x60/0x64
+- **Scancode Set**: Set 1 (PC/XT compatible)
+- **Features**:
+  - Scancode to ASCII translation (US QWERTY layout)
+  - Modifier key support (Shift, Ctrl, Alt, Caps Lock)
+  - Circular buffer for input queueing (256 key events)
+  - LED control (Caps, Num, Scroll Lock)
+  - Key press/release event tracking
+  - Blocking and non-blocking input modes
+- **Key Event Structure**:
+  - Raw scancode
+  - ASCII character (if printable)
+  - Modifier state
+  - Press/release flag
+- **API**:
+  - `keyboard_init()` - Initialize keyboard driver
+  - `keyboard_getchar()` - Read character (blocking)
+  - `keyboard_has_key()` - Check if input available
+  - `keyboard_read_key()` - Read full key event
+  - `keyboard_set_leds()` - Control keyboard LEDs
+  - `keyboard_flush()` - Clear input buffer
