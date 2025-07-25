@@ -25,6 +25,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **Heap Allocator**: Dynamic memory allocation with malloc/free/calloc/realloc
 - **PIC Configuration**: 8259A PIC initialization with IRQ remapping and handling
 - **Keyboard Driver**: PS/2 keyboard support with scancode translation and buffering
+- **Timer Driver**: PIT-based system timer with timing and delay functions
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -71,6 +72,8 @@ chanux/
 │   │   ├── irq.asm    # IRQ handler assembly stubs
 │   │   ├── keyboard.c # PS/2 keyboard driver implementation
 │   │   ├── keyboard_test.c # Keyboard driver tests
+│   │   ├── timer.c    # PIT timer driver implementation
+│   │   ├── timer_test.c # Timer driver tests
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -83,7 +86,8 @@ chanux/
 │       ├── vmm.h      # Virtual memory manager interface
 │       ├── heap.h     # Heap allocator interface
 │       ├── pic.h      # PIC constants and function declarations
-│       └── keyboard.h # Keyboard driver interface and scancodes
+│       ├── keyboard.h # Keyboard driver interface and scancodes
+│       └── timer.h    # Timer driver interface and PIT constants
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -269,6 +273,51 @@ Enabled IRQs: None
 PIC tests completed successfully!
 Total timer ticks: XX
 
+Initializing timer at 100 Hz...
+Timer initialized: 10 ms per tick
+
+Running timer driver tests...
+============================
+
+=== Basic Timer Test ===
+Timer frequency: 100 Hz
+Milliseconds per tick: 10
+Microseconds per tick: 10000
+
+Counting 10 ticks...
+Tick 1: 100
+Tick 2: 101
+...
+Elapsed ticks: 10
+
+=== Sleep Test ===
+Sleeping for 100 ms... done! (actual: 100 ms)
+Sleeping for 250 ms... done! (actual: 250 ms)
+Sleeping for 500 ms... done! (actual: 500 ms)
+Sleeping for 1000 ms... done! (actual: 1000 ms)
+
+=== Time Measurement Test ===
+10,000 iterations: 1234 microseconds
+String output: 567 microseconds
+100ms delay measured as: 100042 microseconds
+
+=== Callback Test ===
+Callbacks received: 50
+Last callback at tick: 150
+
+=== Frequency Change Test ===
+Changing frequency to 50 Hz
+Ticks in ~1 second: 50
+Changing frequency to 1000 Hz
+Ticks in ~1 second: 1000
+
+=== Uptime Test ===
+System uptime: 3 seconds (3240 ms)
+Total ticks: 324
+
+=== Timer Test Summary ===
+All timer tests completed!
+
 Initializing keyboard driver...
 Keyboard driver initialized
 
@@ -310,12 +359,12 @@ Test complete! Errors: 0
 === Keyboard Test Summary ===
 All keyboard tests completed!
 
-Welcome to ChanUX with Virtual Memory, Heap, Interrupts, and Keyboard!
+Welcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, and Keyboard!
 ```
 
 ## Current Status
 
-ChanUX has completed Phase 1, Phase 2, and begun Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, and accepts keyboard input.
+ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, provides system timing, and accepts keyboard input.
 
 ## Features Roadmap
 
@@ -335,7 +384,7 @@ ChanUX has completed Phase 1, Phase 2, and begun Phase 3. The kernel successfull
 
 ### Phase 3: Essential Features (In Progress)
 - [x] Keyboard driver - PS/2 keyboard with scancode translation and buffering
-- [ ] Timer/PIT driver
+- [x] Timer/PIT driver - System timer with frequency control and time measurement
 - [ ] Basic scheduler
 - [ ] System calls interface
 - [ ] User mode support
@@ -420,21 +469,31 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Maps 256 pages (1MB) at 256MB mark
    - Sets up linked list of memory blocks
    - Runs unit tests to verify allocation
-11. Keyboard driver initializes:
+11. Timer driver initializes:
+   - Configures PIT for 100Hz operation
+   - Sets up tick counting
+   - Enables timer interrupt (IRQ0)
+12. Keyboard driver initializes:
    - Configures PS/2 keyboard controller
    - Sets up keyboard buffer
    - Enables keyboard interrupt (IRQ1)
-12. PIC test runs:
-   - Enables timer (IRQ0) and keyboard (IRQ1) interrupts
+13. PIC test runs:
    - Tests interrupt handling with timer ticks
    - Demonstrates keyboard interrupt on keypress
-13. Keyboard tests run:
+14. Timer tests run:
+   - Tick counting and frequency control
+   - Sleep and delay functions
+   - Time measurement accuracy
+   - Timer callbacks
+   - Frequency changes
+   - Uptime tracking
+15. Keyboard tests run:
    - Character input and display
    - Modifier key detection
    - Scancode reading
    - Buffer management
    - Typing accuracy test
-14. Kernel enters idle loop
+16. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -546,3 +605,29 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `keyboard_read_key()` - Read full key event
   - `keyboard_set_leds()` - Control keyboard LEDs
   - `keyboard_flush()` - Clear input buffer
+
+### Programmable Interval Timer (8253/8254 PIT)
+- **Base Frequency**: 1.193182 MHz input clock
+- **Default Configuration**: 100 Hz (10ms per tick)
+- **Channel Usage**: Channel 0 for system timer
+- **Features**:
+  - Configurable frequency (19 Hz to 1.193 MHz)
+  - Tick counting for timekeeping
+  - Millisecond and microsecond sleep functions
+  - Time measurement with microsecond precision
+  - Timer callbacks for periodic tasks
+  - Uptime tracking
+  - Dynamic frequency changes
+- **Time Units**:
+  - System ticks (frequency dependent)
+  - Milliseconds (ms)
+  - Microseconds (μs)
+  - Seconds
+- **API**:
+  - `timer_init(freq)` - Initialize timer with frequency
+  - `timer_get_ticks()` - Get current tick count
+  - `timer_sleep(ms)` - Sleep for milliseconds
+  - `timer_usleep(us)` - Sleep for microseconds
+  - `timer_get_uptime_ms()` - Get system uptime in ms
+  - `timer_set_frequency()` - Change timer frequency
+  - `timer_measure_start/end()` - Measure elapsed time

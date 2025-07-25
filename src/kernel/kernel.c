@@ -10,6 +10,7 @@
 #include "../include/vmm.h"
 #include "../include/heap.h"
 #include "../include/pic.h"
+#include "../include/timer.h"
 #include "../include/keyboard.h"
 
 /* External function declarations for system initialization */
@@ -149,6 +150,12 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     /* Print heap debug info */
     heap_print_blocks();
     
+    /* Initialize Timer Driver
+     * The timer provides system timing and delays
+     * It must be initialized after PIC for interrupt handling
+     */
+    timer_init(TIMER_DEFAULT_FREQ);
+    
     /* Initialize Keyboard Driver
      * The keyboard driver handles PS/2 keyboard input
      * It must be initialized after PIC for interrupt handling
@@ -159,6 +166,10 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     void pic_run_tests(void);
     pic_run_tests();
     
+    /* Run timer tests */
+    void timer_run_tests(void);
+    timer_run_tests();
+    
     /* Run keyboard tests */
     void keyboard_run_tests(void);
     keyboard_run_tests();
@@ -168,7 +179,7 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     pmm_print_memory_map();
     
     /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, Interrupts, and Keyboard!\n");
+    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, and Keyboard!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
