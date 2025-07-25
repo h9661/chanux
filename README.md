@@ -22,6 +22,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **VGA Terminal**: Text mode display driver with color support and scrolling
 - **Physical Memory Manager**: Bitmap-based allocator with multiboot memory detection
 - **Virtual Memory Manager**: x86 paging with dynamic page allocation and mapping
+- **Heap Allocator**: Dynamic memory allocation with malloc/free/calloc/realloc
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -61,6 +62,8 @@ chanux/
 │   │   ├── vmm_test.c # VMM unit tests
 │   │   ├── paging_asm.asm # Paging assembly routines
 │   │   ├── isr.asm    # Interrupt service routines
+│   │   ├── heap.c     # Heap allocator implementation
+│   │   ├── heap_test.c # Heap allocator unit tests
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -70,7 +73,8 @@ chanux/
 │       ├── multiboot.h # Multiboot specification structures
 │       ├── pmm.h      # Physical memory manager interface
 │       ├── paging.h   # Paging structures and constants
-│       └── vmm.h      # Virtual memory manager interface
+│       ├── vmm.h      # Virtual memory manager interface
+│       └── heap.h     # Heap allocator interface
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -185,6 +189,39 @@ Free pages: XXXX
 First 10 pages: UUUUUUUUFF
 
 Welcome to ChanUX with Virtual Memory!
+
+Initializing heap allocator...
+Allocating 256 pages for heap at 0x10000000
+Heap initialized: 1024 KB available
+
+Running heap allocator tests...
+==============================
+[PASS] Basic allocation and free
+[PASS] Zero size allocation
+[PASS] Calloc zero initialization
+[PASS] Realloc functionality
+[PASS] Many small allocations
+[PASS] Large allocation (64KB)
+[PASS] Fragmentation and coalescing
+[PASS] Heap statistics tracking
+[PASS] Memory alignment
+[PASS] Heap integrity check
+
+Test Results: 10 passed, 0 failed
+All tests passed!
+
+Testing heap allocation...
+Allocated strings:
+  str1: Hello from heap!
+  str2: Dynamic memory allocation works!
+Memory freed successfully
+
+Heap blocks:
+Address     Size      Status
+--------------------------------
+0x10000000  XXXX bytes  FREE
+
+Welcome to ChanUX with Virtual Memory and Heap!
 ```
 
 ## Current Status
@@ -203,7 +240,7 @@ ChanUX has completed Phase 1 and significant portions of Phase 2. The kernel suc
 ### Phase 2: Core Kernel (In Progress)
 - [x] Physical memory manager - Bitmap-based page allocator with memory detection
 - [x] Virtual memory (paging) - x86 paging with page tables and address translation
-- [ ] Heap allocator
+- [x] Heap allocator - Dynamic memory allocation with malloc/free
 - [x] Basic interrupt handlers - Page fault handler implemented
 - [ ] PIC configuration
 
@@ -268,6 +305,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - VGA Text Buffer: Direct memory access at 0xB8000
 - PMM Bitmap: Located at 2MB (0x200000)
 - Page Size: 4KB (4096 bytes)
+- Heap Start: 256MB (0x10000000)
+- Initial Heap Size: 1MB
 
 ### Boot Process
 1. GRUB loads the multiboot header and kernel
@@ -287,7 +326,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Enables paging (CR0.PG = 1)
    - Installs page fault handler
    - Runs unit tests to verify paging
-9. Kernel enters idle loop
+9. Heap Allocator initializes:
+   - Maps 256 pages (1MB) at 256MB mark
+   - Sets up linked list of memory blocks
+   - Runs unit tests to verify allocation
+10. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -329,3 +372,28 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `vmm_unmap_page()` - Unmap virtual address
   - `vmm_alloc_page()` - Allocate and map virtual page
   - `vmm_create_page_directory()` - Create new address space
+
+### Heap Allocator
+- **Algorithm**: First-fit with block coalescing
+- **Block Structure**: Linked list with headers containing size and status
+- **Features**:
+  - Dynamic memory allocation (malloc/free)
+  - Memory reallocation (realloc)
+  - Zero-initialized allocation (calloc)
+  - Automatic heap expansion
+  - Block splitting and coalescing
+  - Heap integrity checking
+  - Statistics tracking
+- **Memory Layout**:
+  - Start Address: 0x10000000 (256MB)
+  - Initial Size: 1MB
+  - Maximum Size: 256MB
+  - Minimum Block: 16 bytes
+  - Alignment: 8 bytes
+- **API**:
+  - `malloc(size)` - Allocate memory block
+  - `free(ptr)` - Free memory block
+  - `calloc(num, size)` - Allocate zero-initialized array
+  - `realloc(ptr, new_size)` - Resize memory block
+  - `heap_get_stats()` - Get heap usage statistics
+  - `heap_check_integrity()` - Verify heap consistency
