@@ -17,6 +17,10 @@ extern void terminal_write_dec(uint32_t value);
 /* Function declarations */
 void pic_print_status(void);
 
+/* External interrupt handlers */
+extern void keyboard_interrupt_handler(void);
+extern void timer_handler(void);
+
 /* Current IRQ mask (1 = disabled, 0 = enabled) */
 static uint16_t irq_mask = 0xFFFF;  /* Start with all IRQs disabled */
 
@@ -190,7 +194,18 @@ void irq_handler(uint32_t irq_num) {
         }
     }
     
-    /* TODO: Call specific IRQ handlers based on irq_num */
+    /* Call specific IRQ handlers based on irq_num */
+    switch (irq_num) {
+        case 0:  /* Timer */
+            timer_handler();
+            break;
+        case 1:  /* Keyboard */
+            keyboard_interrupt_handler();
+            break;
+        default:
+            /* Unhandled IRQ */
+            break;
+    }
     
     /* Send EOI */
     pic_send_eoi(irq_num);
