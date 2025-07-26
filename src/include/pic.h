@@ -103,6 +103,9 @@ void pic_set_irq_mask(uint16_t mask);
 uint16_t pic_get_irr(void);  /* Interrupt Request Register */
 uint16_t pic_get_isr(void);  /* In-Service Register */
 
+/* Print PIC status (for debugging) */
+void pic_print_status(void);
+
 /* Helper functions for port I/O */
 static inline void outb(uint16_t port, uint8_t value) {
     __asm__ __volatile__ ("outb %0, %1" : : "a"(value), "d"(port));
