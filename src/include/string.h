@@ -78,4 +78,42 @@ void* memmove(void* dstptr, const void* srcptr, size_t size);
  */
 int memcmp(const void* ptr1, const void* ptr2, size_t size);
 
+/**
+ * @brief Copy a string including null terminator
+ * 
+ * Copies the string pointed to by src (including the null terminator)
+ * to the buffer pointed to by dest.
+ * 
+ * @param dest Destination buffer
+ * @param src Source string
+ * @return Pointer to destination buffer (dest)
+ * 
+ * @warning The destination buffer must be large enough
+ */
+char* strcpy(char* dest, const char* src);
+
+/**
+ * @brief Copy a string with size limit
+ * 
+ * Copies up to n characters from src to dest. If src is shorter than n,
+ * the remaining characters in dest are filled with null bytes.
+ * 
+ * @param dest Destination buffer
+ * @param src Source string
+ * @param n Maximum number of characters to copy
+ * @return Pointer to destination buffer (dest)
+ */
+char* strncpy(char* dest, const char* src, size_t n);
+
+/**
+ * @brief Get string length
+ * 
+ * Calculates the length of the string pointed to by str, not including
+ * the terminating null character.
+ * 
+ * @param str String to measure
+ * @return Number of characters in the string
+ */
+size_t strlen(const char* str);
+
 #endif  /* _STRING_H */
