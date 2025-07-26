@@ -21,44 +21,16 @@ static uint32_t pmm_used_pages = 0;
 
 /* Terminal output functions (defined in terminal.c) */
 extern void terminal_writestring(const char* data);
-extern void terminal_write_hex(uint32_t value);
 extern void terminal_write_dec(uint32_t value);
+extern void terminal_write_hex(uint8_t value);
 
-/* Helper function to convert integer to string */
-static void itoa(uint32_t value, char* str, int base) {
-    char* ptr = str;
-    char* ptr1 = str;
-    char tmp_char;
-    uint32_t tmp_value;
-
-    do {
-        tmp_value = value;
-        value /= base;
-        *ptr++ = "0123456789abcdef"[tmp_value - value * base];
-    } while (value);
-
-    *ptr-- = '\0';
-    
-    while (ptr1 < ptr) {
-        tmp_char = *ptr;
-        *ptr-- = *ptr1;
-        *ptr1++ = tmp_char;
-    }
-}
-
-/* Print a decimal number */
-void terminal_write_dec(uint32_t value) {
-    char buffer[12];
-    itoa(value, buffer, 10);
-    terminal_writestring(buffer);
-}
-
-/* Print a hexadecimal number */
-void terminal_write_hex(uint32_t value) {
+/* Helper to print 32-bit hex values */
+static void pmm_write_hex32(uint32_t value) {
     terminal_writestring("0x");
-    char buffer[9];
-    itoa(value, buffer, 16);
-    terminal_writestring(buffer);
+    terminal_write_hex((value >> 24) & 0xFF);
+    terminal_write_hex((value >> 16) & 0xFF);
+    terminal_write_hex((value >> 8) & 0xFF);
+    terminal_write_hex(value & 0xFF);
 }
 
 /* Set a bit in the bitmap (mark page as used) */
@@ -155,9 +127,9 @@ void pmm_init(struct multiboot_info *mboot_info) {
     while (mmap < mmap_end) {
         /* Print memory region info */
         terminal_writestring("  Region: ");
-        terminal_write_hex((uint32_t)mmap->addr);
+        pmm_write_hex32((uint32_t)mmap->addr);
         terminal_writestring(" - ");
-        terminal_write_hex((uint32_t)(mmap->addr + mmap->len));
+        pmm_write_hex32((uint32_t)(mmap->addr + mmap->len));
         terminal_writestring(" (");
         terminal_write_dec((uint32_t)(mmap->len / 1024 / 1024));
         terminal_writestring(" MB) - ");

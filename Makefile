@@ -125,7 +125,7 @@ iso: $(KERNEL)
 	echo '}' >> iso/boot/grub/grub.cfg
 	
 	# Use grub-mkrescue to create the final ISO image
-	grub-mkrescue -o $(ISO) iso
+	i686-elf-grub-mkrescue -o $(ISO) iso
 
 # Run the OS in QEMU emulator
 # Depends on ISO creation first
