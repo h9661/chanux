@@ -72,7 +72,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     pmm_init(mboot_info);
     
-    
     /* Initialize Virtual Memory Manager
      * The VMM provides virtual memory mapping using x86 paging
      * It sets up page tables and enables memory protection
@@ -109,41 +108,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      * It uses virtual memory pages allocated by the VMM
      */
     heap_init();
-    
-    
-    /* Test heap with practical example */
-    terminal_writestring("\nTesting heap allocation...\n");
-    
-    /* Allocate some strings */
-    char* str1 = (char*)malloc(50);
-    char* str2 = (char*)malloc(100);
-    
-    if (str1 && str2) {
-        /* Copy test strings */
-        const char* test1 = "Hello from heap!";
-        const char* test2 = "Dynamic memory allocation works!";
-        
-        for (int i = 0; test1[i]; i++) str1[i] = test1[i];
-        str1[16] = '\0';
-        
-        for (int i = 0; test2[i]; i++) str2[i] = test2[i];
-        str2[32] = '\0';
-        
-        terminal_writestring("Allocated strings:\n");
-        terminal_writestring("  str1: ");
-        terminal_writestring(str1);
-        terminal_writestring("\n  str2: ");
-        terminal_writestring(str2);
-        terminal_writestring("\n");
-        
-        /* Free memory */
-        free(str1);
-        free(str2);
-        terminal_writestring("Memory freed successfully\n");
-    }
-    
-    /* Print heap debug info */
-    heap_print_blocks();
     
     /* Initialize Timer Driver
      * The timer provides system timing and delays
