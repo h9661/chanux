@@ -78,31 +78,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     vmm_init();
     
-    
-    /* Test paging by accessing mapped memory */
-    terminal_writestring("\nTesting virtual memory access...\n");
-    
-    /* Map a test page */
-    uint32_t test_virt = 0x20000000;  /* 512MB */
-    uint32_t test_result = vmm_alloc_page(vmm_get_current_directory(), 
-                                         test_virt, PAGE_PRESENT | PAGE_WRITABLE);
-    
-    if (test_result != 0) {
-        /* Write to the virtual address */
-        uint32_t* test_ptr = (uint32_t*)test_virt;
-        *test_ptr = 0xDEADBEEF;
-        
-        /* Read it back */
-        if (*test_ptr == 0xDEADBEEF) {
-            terminal_writestring("Virtual memory write/read successful!\n");
-        } else {
-            terminal_writestring("Virtual memory test failed!\n");
-        }
-        
-        /* Clean up */
-        vmm_free_page(vmm_get_current_directory(), test_virt);
-    }
-    
     /* Initialize Heap Allocator
      * The heap provides dynamic memory allocation (malloc/free)
      * It uses virtual memory pages allocated by the VMM
