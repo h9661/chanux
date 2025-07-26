@@ -58,8 +58,8 @@ irq_common_stub:
     push esp
     
     ; Call C handler
-    ; Stack: [gs][fs][es][ds][edi][esi][ebp][esp][ebx][edx][ecx][eax][irq_num][err_code][eip][cs][eflags]
-    mov eax, [esp + 48] ; Get IRQ number (after all pushes)
+    ; Stack: [esp][gs][fs][es][ds][edi][esi][ebp][esp][ebx][edx][ecx][eax][irq_num][err_code][eip][cs][eflags]
+    mov eax, [esp + 44] ; Get IRQ number (after all pushes)
     push eax            ; Push IRQ number as argument
     call irq_handler
     add esp, 8          ; Clean up arguments (IRQ number + ESP)
