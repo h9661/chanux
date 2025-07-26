@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../include/string.h"
 
 /* VGA text mode constants */
 static const size_t VGA_WIDTH = 80;   /* Standard VGA text mode width */
@@ -63,18 +64,6 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
     return (uint16_t) uc | (uint16_t) color << 8;
 }
 
-/*
- * strlen - Calculate string length
- * @str: Null-terminated string
- *
- * Returns: Length of string (not including null terminator)
- */
-size_t strlen(const char* str) {
-    size_t len = 0;
-    while (str[len])
-        len++;
-    return len;
-}
 
 /*
  * terminal_initialize - Initialize the terminal
