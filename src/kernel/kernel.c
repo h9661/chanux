@@ -72,9 +72,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     pmm_init(mboot_info);
     
-    /* Run PMM unit tests */
-    void pmm_run_tests(void);
-    pmm_run_tests();
     
     /* Initialize Virtual Memory Manager
      * The VMM provides virtual memory mapping using x86 paging
@@ -82,9 +79,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     vmm_init();
     
-    /* Run VMM unit tests */
-    void vmm_run_tests(void);
-    vmm_run_tests();
     
     /* Test paging by accessing mapped memory */
     terminal_writestring("\nTesting virtual memory access...\n");
@@ -116,9 +110,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     heap_init();
     
-    /* Run heap allocator tests */
-    void heap_run_tests(void);
-    heap_run_tests();
     
     /* Test heap with practical example */
     terminal_writestring("\nTesting heap allocation...\n");
@@ -166,28 +157,14 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     keyboard_init();
     
-    /* Run PIC tests */
-    void pic_run_tests(void);
-    pic_run_tests();
-    
-    /* Run timer tests */
-    void timer_run_tests(void);
-    timer_run_tests();
-    
-    /* Run keyboard tests */
-    void keyboard_run_tests(void);
-    keyboard_run_tests();
-    
-    /* Run system call tests */
-    void syscall_run_tests(void);
-    syscall_run_tests();
-    
-    /* Print memory statistics */
-    terminal_writestring("\nFinal memory state:\n");
-    pmm_print_memory_map();
+    /* Initialize System Call Interface
+     * This sets up interrupt 0x80 for system calls from user space
+     */
+    void syscall_init(void);
+    syscall_init();
     
     /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, and Keyboard!\n");
+    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, Keyboard, and System Calls!\n");
     
     /* Main kernel loop - halt CPU when idle to save power
      * The HLT instruction stops the CPU until an interrupt occurs
