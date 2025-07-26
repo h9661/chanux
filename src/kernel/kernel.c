@@ -18,6 +18,10 @@ void gdt_install(void);        /* Set up Global Descriptor Table */
 void idt_install(void);        /* Set up Interrupt Descriptor Table */
 void terminal_initialize(void); /* Initialize VGA text mode terminal */
 void terminal_writestring(const char* data); /* Write string to terminal */
+void terminal_write_dec(uint32_t value); /* Write decimal number to terminal */
+void terminal_write_hex(uint8_t value); /* Write hexadecimal number to terminal */
+uint64_t timer_get_ticks(void); /* Get current timer tick count */
+void pic_print_status(void);    /* Print PIC status */
 
 /*
  * kernel_main - Main entry point for the kernel
@@ -173,6 +177,10 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     /* Run keyboard tests */
     void keyboard_run_tests(void);
     keyboard_run_tests();
+    
+    /* Run system call tests */
+    void syscall_run_tests(void);
+    syscall_run_tests();
     
     /* Print memory statistics */
     terminal_writestring("\nFinal memory state:\n");
