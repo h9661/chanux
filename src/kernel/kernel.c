@@ -12,6 +12,7 @@
 #include "../include/pic.h"
 #include "../include/timer.h"
 #include "../include/keyboard.h"
+#include "../include/scheduler.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */
@@ -102,14 +103,89 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     void syscall_init(void);
     syscall_init();
     
-    /* Kernel initialization complete */
-    terminal_writestring("\nWelcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, Keyboard, and System Calls!\n");
+    /* Initialize Scheduler
+     * The scheduler manages process creation, switching, and termination
+     */
+    scheduler_init();
     
-    /* Main kernel loop - halt CPU when idle to save power
-     * The HLT instruction stops the CPU until an interrupt occurs
-     * This is more efficient than a busy-wait loop
+    /* Create test processes */
+    terminal_writestring("\nCreating test processes...\n");
+    
+    /* Test process functions */
+    void test_process1(void);
+    void test_process2(void);
+    void test_process3(void);
+    
+    /* Create test processes */
+    process_create("test1", test_process1);
+    process_create("test2", test_process2);
+    process_create("test3", test_process3);
+    
+    /* Kernel initialization complete */
+    terminal_writestring("\nWelcome to ChanUX with Process Scheduler!\n");
+    terminal_writestring("Scheduler is running with round-robin algorithm.\n\n");
+    
+    /* Enable interrupts for scheduler */
+    __asm__ __volatile__ ("sti");
+    
+    /* Main kernel loop - scheduler will handle process switching
+     * The idle process will run this loop when no other processes are ready
      */
     while (1) {
         __asm__ __volatile__ ("hlt");
     }
+}
+
+/* Test Process 1 - Prints messages periodically */
+void test_process1(void) {
+    terminal_writestring("\n[Process 1] Started!\n");
+    
+    for (int i = 0; i < 10; i++) {
+        terminal_writestring("[Process 1] Working... iteration ");
+        terminal_write_dec(i);
+        terminal_writestring("\n");
+        
+        /* Busy wait to simulate work */
+        for (volatile int j = 0; j < 10000000; j++);
+    }
+    
+    terminal_writestring("[Process 1] Finished!\n");
+    process_exit(0);
+}
+
+/* Test Process 2 - Counts and yields */
+void test_process2(void) {
+    terminal_writestring("\n[Process 2] Started!\n");
+    
+    for (int i = 0; i < 8; i++) {
+        terminal_writestring("[Process 2] Count: ");
+        terminal_write_dec(i);
+        terminal_writestring(" - yielding CPU\n");
+        
+        process_yield();
+        
+        /* Some work after yield */
+        for (volatile int j = 0; j < 5000000; j++);
+    }
+    
+    terminal_writestring("[Process 2] Finished!\n");
+    process_exit(0);
+}
+
+/* Test Process 3 - Uses sleep */
+void test_process3(void) {
+    terminal_writestring("\n[Process 3] Started!\n");
+    
+    for (int i = 0; i < 5; i++) {
+        terminal_writestring("[Process 3] Sleeping for 100ms... ");
+        terminal_write_dec(i);
+        terminal_writestring("\n");
+        
+        timer_sleep(100);
+        
+        terminal_writestring("[Process 3] Woke up!\n");
+    }
+    
+    terminal_writestring("[Process 3] Finished!\n");
+    process_exit(0);
 }

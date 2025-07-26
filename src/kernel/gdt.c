@@ -29,8 +29,8 @@ struct gdt_ptr {
     uint32_t base;          /* Linear address of GDT */
 } __attribute__((packed));
 
-/* Our GDT with 5 entries */
-struct gdt_entry gdt[5];
+/* Our GDT with 6 entries (including TSS) */
+struct gdt_entry gdt[6];
 struct gdt_ptr gp;
 
 /* External assembly function to load the GDT */
@@ -80,10 +80,11 @@ void gdt_set_gate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, ui
  * 2: Kernel data segment
  * 3: User code segment
  * 4: User data segment
+ * 5: TSS segment (added later)
  */
 void gdt_install() {
     /* Set up GDT pointer */
-    gp.limit = (sizeof(struct gdt_entry) * 5) - 1;
+    gp.limit = (sizeof(struct gdt_entry) * 6) - 1;
     gp.base = (uint32_t)&gdt;
     
     /* Null segment - required by x86 architecture */
