@@ -90,11 +90,15 @@ void timer_init(uint32_t frequency) {
 void timer_interrupt_handler(void) {
     /* Increment tick counter */
     timer_ticks++;
-    
+
     /* Call registered callback if any */
     if (timer_callback) {
         timer_callback(timer_ticks);
     }
+    
+    /* Call scheduler on every timer tick */
+    extern void scheduler_tick(void);
+    scheduler_tick();
 }
 
 /*
@@ -165,15 +169,9 @@ uint32_t timer_get_frequency(void) {
 void timer_sleep(uint32_t ms) {
     if (ms == 0) return;
     
-    uint64_t start_ticks = timer_ticks;
-    uint64_t ticks_to_wait = (ms + timer_ms_per_tick - 1) / timer_ms_per_tick;
-    uint64_t target_ticks = start_ticks + ticks_to_wait;
-    
-    /* Wait for target tick count */
-    while (timer_ticks < target_ticks) {
-        /* Halt CPU until next interrupt */
-        __asm__ __volatile__ ("hlt");
-    }
+    /* Use scheduler's process_sleep for proper sleep implementation */
+    extern void process_sleep(uint32_t ms);
+    process_sleep(ms);
 }
 
 /*
