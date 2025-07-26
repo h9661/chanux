@@ -71,6 +71,10 @@ chanux/
 │   │   ├── timer.c    # PIT timer driver implementation
 │   │   ├── syscall.c  # System call handler implementation
 │   │   ├── syscall_asm.asm # System call interrupt handler
+│   │   ├── scheduler.c # Process scheduler implementation
+│   │   ├── tss.c      # Task State Segment management
+│   │   ├── tss_flush.asm # TSS loading assembly routine
+│   │   ├── switch.asm # Context switching assembly code
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -85,7 +89,9 @@ chanux/
 │       ├── pic.h      # PIC constants and function declarations
 │       ├── keyboard.h # Keyboard driver interface and scancodes
 │       ├── timer.h    # Timer driver interface and PIT constants
-│       └── syscall.h  # System call numbers and interfaces
+│       ├── syscall.h  # System call numbers and interfaces
+│       ├── scheduler.h # Process scheduler interface and PCB structure
+│       └── tss.h      # Task State Segment structure
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -137,7 +143,7 @@ make run
 
 ## Current Status
 
-ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, provides system timing, accepts keyboard input, and supports system calls via interrupt 0x80.
+ChanUX has completed Phase 1, Phase 2, and Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, provides system timing, accepts keyboard input, supports system calls via interrupt 0x80, and includes a functional round-robin process scheduler with context switching capabilities.
 
 ## Features Roadmap
 
@@ -155,11 +161,11 @@ ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The k
 - [x] Basic interrupt handlers - Page fault handler implemented
 - [x] PIC configuration - 8259A PIC initialized with IRQ remapping
 
-### Phase 3: Essential Features (In Progress)
+### Phase 3: Essential Features (Completed) ✅
 - [x] Keyboard driver - PS/2 keyboard with scancode translation and buffering
 - [x] Timer/PIT driver - System timer with frequency control and time measurement
 - [x] System calls interface - Linux-compatible int 0x80 with basic syscalls
-- [ ] Basic scheduler
+- [x] Basic scheduler - Round-robin process scheduling with context switching
 - [ ] User mode support
 
 ### Phase 4: Advanced Features
@@ -251,7 +257,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Installs interrupt handler for int 0x80
    - Sets up system call table
    - Configures IDT entry with DPL=3 for user access
-14. Kernel enters idle loop
+14. Scheduler initializes:
+   - Sets up Task State Segment (TSS)
+   - Creates idle process (PID 0)
+   - Initializes process list and ready queue
+   - Enables timer-based preemption
+15. Test processes are created
+16. Kernel enables interrupts and scheduler takes over
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -412,3 +424,38 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - System call table for easy extension
   - Register preservation across calls
   - Error handling with negative return values
+
+### Process Scheduler
+- **Algorithm**: Round-robin with fixed time slices
+- **Time Slice**: 50ms (5 timer ticks at 100Hz)
+- **Process States**:
+  - READY: Process is ready to run
+  - RUNNING: Process is currently executing
+  - BLOCKED: Process is waiting for I/O or event
+  - TERMINATED: Process has finished execution
+- **Process Control Block (PCB)**:
+  - Process ID (PID) and name
+  - CPU context (registers)
+  - Kernel and user stack pointers
+  - Page directory for virtual memory
+  - Scheduling information (time slice, priority)
+  - Process statistics (CPU time, start time)
+- **Features**:
+  - Context switching with full register preservation
+  - Task State Segment (TSS) for privilege level switching
+  - Process creation with automatic stack allocation
+  - Process termination with resource cleanup
+  - Idle process for CPU power saving
+  - Scheduler statistics tracking
+- **API**:
+  - `process_create()` - Create new process
+  - `process_exit()` - Terminate current process
+  - `process_yield()` - Voluntarily give up CPU
+  - `process_get_current_pid()` - Get current process ID
+  - `scheduler_tick()` - Called on timer interrupt
+- **Implementation Details**:
+  - Maximum 64 processes
+  - 4KB kernel stack per process
+  - Ready queue for scheduling
+  - Automatic page directory cloning
+  - Integration with timer interrupt (IRQ0)
