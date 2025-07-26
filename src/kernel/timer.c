@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "../include/timer.h"
 #include "../include/pic.h"
 
@@ -134,7 +135,21 @@ uint64_t timer_get_uptime_ms(void) {
  * Get uptime in seconds
  */
 uint64_t timer_get_uptime_sec(void) {
-    return timer_ticks / timer_frequency;
+    /* Simple version: convert to milliseconds first, then to seconds */
+    /* This avoids 64-bit division */
+    uint64_t ms = timer_get_uptime_ms();
+    
+    /* Convert milliseconds to seconds using 32-bit division */
+    uint32_t ms_low = (uint32_t)(ms & 0xFFFFFFFF);
+    uint32_t ms_high = (uint32_t)(ms >> 32);
+    
+    if (ms_high == 0) {
+        /* Common case: less than ~49 days uptime */
+        return ms_low / 1000;
+    }
+    
+    /* For very long uptimes, just return an approximation */
+    return (uint64_t)(ms_low / 1000) + ((uint64_t)ms_high * 4294967);  /* 2^32 / 1000 */
 }
 
 /*
