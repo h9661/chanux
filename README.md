@@ -26,6 +26,7 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 - **PIC Configuration**: 8259A PIC initialization with IRQ remapping and handling
 - **Keyboard Driver**: PS/2 keyboard support with scancode translation and buffering
 - **Timer Driver**: PIT-based system timer with timing and delay functions
+- **System Call Interface**: Linux-compatible int 0x80 mechanism with basic syscalls
 - **Build System**: Complete Makefile with support for cross-compilation
 
 ## Prerequisites
@@ -60,20 +61,16 @@ chanux/
 │   │   ├── idt_load.asm  # IDT loading assembly routine
 │   │   ├── terminal.c # VGA text mode terminal driver
 │   │   ├── pmm.c      # Physical memory manager implementation
-│   │   ├── pmm_test.c # PMM unit tests
 │   │   ├── vmm.c      # Virtual memory manager implementation
-│   │   ├── vmm_test.c # VMM unit tests
 │   │   ├── paging_asm.asm # Paging assembly routines
 │   │   ├── isr.asm    # Interrupt service routines
 │   │   ├── heap.c     # Heap allocator implementation
-│   │   ├── heap_test.c # Heap allocator unit tests
 │   │   ├── pic.c      # Programmable Interrupt Controller implementation
-│   │   ├── pic_test.c # PIC test code with timer and keyboard
 │   │   ├── irq.asm    # IRQ handler assembly stubs
 │   │   ├── keyboard.c # PS/2 keyboard driver implementation
-│   │   ├── keyboard_test.c # Keyboard driver tests
 │   │   ├── timer.c    # PIT timer driver implementation
-│   │   ├── timer_test.c # Timer driver tests
+│   │   ├── syscall.c  # System call handler implementation
+│   │   ├── syscall_asm.asm # System call interrupt handler
 │   │   └── linker.ld  # Linker script for kernel memory layout
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
@@ -87,7 +84,8 @@ chanux/
 │       ├── heap.h     # Heap allocator interface
 │       ├── pic.h      # PIC constants and function declarations
 │       ├── keyboard.h # Keyboard driver interface and scancodes
-│       └── timer.h    # Timer driver interface and PIT constants
+│       ├── timer.h    # Timer driver interface and PIT constants
+│       └── syscall.h  # System call numbers and interfaces
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation
@@ -359,12 +357,12 @@ Test complete! Errors: 0
 === Keyboard Test Summary ===
 All keyboard tests completed!
 
-Welcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, and Keyboard!
+Welcome to ChanUX with Virtual Memory, Heap, Interrupts, Timer, Keyboard, and System Calls!
 ```
 
 ## Current Status
 
-ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, provides system timing, and accepts keyboard input.
+ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The kernel successfully boots in protected mode, manages both physical and virtual memory with paging enabled, handles hardware interrupts, provides system timing, accepts keyboard input, and supports system calls via interrupt 0x80.
 
 ## Features Roadmap
 
@@ -385,8 +383,8 @@ ChanUX has completed Phase 1, Phase 2, and is progressing through Phase 3. The k
 ### Phase 3: Essential Features (In Progress)
 - [x] Keyboard driver - PS/2 keyboard with scancode translation and buffering
 - [x] Timer/PIT driver - System timer with frequency control and time measurement
+- [x] System calls interface - Linux-compatible int 0x80 with basic syscalls
 - [ ] Basic scheduler
-- [ ] System calls interface
 - [ ] User mode support
 
 ### Phase 4: Advanced Features
@@ -458,17 +456,14 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Detects available memory from multiboot info
    - Sets up bitmap allocator at 2MB
    - Marks kernel and bitmap memory as used
-   - Runs unit tests to verify functionality
 9. Virtual Memory Manager initializes:
    - Creates kernel page directory
    - Identity maps first 4MB for kernel
    - Enables paging (CR0.PG = 1)
    - Installs page fault handler
-   - Runs unit tests to verify paging
 10. Heap Allocator initializes:
    - Maps 256 pages (1MB) at 256MB mark
    - Sets up linked list of memory blocks
-   - Runs unit tests to verify allocation
 11. Timer driver initializes:
    - Configures PIT for 100Hz operation
    - Sets up tick counting
@@ -477,23 +472,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Configures PS/2 keyboard controller
    - Sets up keyboard buffer
    - Enables keyboard interrupt (IRQ1)
-13. PIC test runs:
-   - Tests interrupt handling with timer ticks
-   - Demonstrates keyboard interrupt on keypress
-14. Timer tests run:
-   - Tick counting and frequency control
-   - Sleep and delay functions
-   - Time measurement accuracy
-   - Timer callbacks
-   - Frequency changes
-   - Uptime tracking
-15. Keyboard tests run:
-   - Character input and display
-   - Modifier key detection
-   - Scancode reading
-   - Buffer management
-   - Typing accuracy test
-16. Kernel enters idle loop
+13. System call interface initializes:
+   - Installs interrupt handler for int 0x80
+   - Sets up system call table
+   - Configures IDT entry with DPL=3 for user access
+14. Kernel enters idle loop
 
 ### Code Organization
 - Assembly files use NASM syntax
@@ -631,3 +614,26 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - `timer_get_uptime_ms()` - Get system uptime in ms
   - `timer_set_frequency()` - Change timer frequency
   - `timer_measure_start/end()` - Measure elapsed time
+
+### System Call Interface
+- **Interrupt Vector**: 0x80 (Linux-compatible)
+- **Calling Convention**: 
+  - System call number in EAX
+  - Arguments in EBX, ECX, EDX, ESI, EDI
+  - Return value in EAX
+- **Implemented System Calls**:
+  - `SYS_EXIT` (1) - Terminate process
+  - `SYS_WRITE` (2) - Write to file descriptor
+  - `SYS_READ` (3) - Read from file descriptor (placeholder)
+  - `SYS_OPEN` (4) - Open file (placeholder)
+  - `SYS_CLOSE` (5) - Close file (placeholder)
+  - `SYS_GETPID` (6) - Get process ID
+  - `SYS_SLEEP` (7) - Sleep for milliseconds
+- **User-Space Interface**:
+  - Inline assembly wrappers (syscall0, syscall1, syscall2, syscall3)
+  - Convenient macros (exit, write, read, getpid, sleep)
+- **Features**:
+  - IDT entry configured with DPL=3 for user-space access
+  - System call table for easy extension
+  - Register preservation across calls
+  - Error handling with negative return values
