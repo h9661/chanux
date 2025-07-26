@@ -459,3 +459,24 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - Ready queue for scheduling
   - Automatic page directory cloning
   - Integration with timer interrupt (IRQ0)
+  - Process sleep mechanism with automatic wake-up
+
+## Recent Updates
+
+### Bug Fixes
+- **IRQ Handler**: Fixed incorrect stack offset calculation that was causing invalid IRQ numbers (e.g., 75664 instead of 0-15)
+- **Process Sleep**: Replaced busy-wait sleep with proper blocking sleep that allows CPU to schedule other processes
+- **Scheduler Preemption**: Fixed idle process preemption to allow switching to ready processes
+
+### New Features
+- **Process Sleep/Wake**: Processes can now sleep for specified milliseconds and automatically wake up
+- **String Library**: Added `strcpy()`, `strncpy()`, and `strlen()` functions
+- **Test Processes**: Three demonstration processes showing different scheduling behaviors
+
+## Contributing
+
+Feel free to contribute to ChanUX! Please ensure your code follows the existing style and includes appropriate comments.
+
+## License
+
+This project is open source and available under the MIT License.
