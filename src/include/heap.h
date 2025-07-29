@@ -13,9 +13,9 @@
 #include <stddef.h>
 
 /* Heap configuration */
-#define HEAP_START      0x10000000  /* Heap starts at 256MB */
+#define HEAP_START      0x04000000  /* Heap starts at 64MB */
 #define HEAP_INITIAL_SIZE 0x100000  /* Initial heap size: 1MB */
-#define HEAP_MAX_SIZE   0x10000000  /* Maximum heap size: 256MB */
+#define HEAP_MAX_SIZE   0x04000000  /* Maximum heap size: 64MB */
 #define HEAP_MIN_BLOCK_SIZE 16      /* Minimum allocatable block */
 #define HEAP_ALIGNMENT  8           /* Memory alignment requirement */
 

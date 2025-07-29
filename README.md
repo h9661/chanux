@@ -41,8 +41,8 @@ ChanUX is a simple operating system kernel written in C and x86 assembly. This p
 
 ### Development Environment
 - Linux or macOS (WSL2 for Windows)
-- At least 4GB RAM
-- 1GB free disk space
+- At least 1GB RAM
+- 1GB total disk space
 
 ## Project Structure
 
@@ -222,7 +222,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - VGA Text Buffer: Direct memory access at 0xB8000
 - PMM Bitmap: Located at 2MB (0x200000)
 - Page Size: 4KB (4096 bytes)
-- Heap Start: 256MB (0x10000000)
+- Heap Start: 64MB (0x04000000)
 - Initial Heap Size: 1MB
 
 ### Boot Process
@@ -243,7 +243,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Enables paging (CR0.PG = 1)
    - Installs page fault handler
 10. Heap Allocator initializes:
-   - Maps 256 pages (1MB) at 256MB mark
+   - Maps 256 pages (1MB) at 64MB mark
    - Sets up linked list of memory blocks
 11. Timer driver initializes:
    - Configures PIT for 100Hz operation
@@ -297,9 +297,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - Page directory cloning (for process creation)
   - TLB management
 - **Memory Layout**:
-  - 0x00000000-0x3FFFFFFF: Kernel space (1GB)
-  - 0x40000000-0xBFFFFFFF: User space (2GB)
-  - 0xC0000000-0xFFFFFFFF: Reserved (1GB)
+  - 0x00000000-0x07FFFFFF: Kernel space (128MB)
+  - 0x08000000-0x3FFFFFFF: User space (~896MB)
+  - 0x40000000-0x3FFFFFFF: Total addressable (1GB)
 - **API**:
   - `vmm_map_page()` - Map virtual to physical address
   - `vmm_unmap_page()` - Unmap virtual address
@@ -318,9 +318,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
   - Heap integrity checking
   - Statistics tracking
 - **Memory Layout**:
-  - Start Address: 0x10000000 (256MB)
+  - Start Address: 0x04000000 (64MB)
   - Initial Size: 1MB
-  - Maximum Size: 256MB
+  - Maximum Size: 64MB
   - Minimum Block: 16 bytes
   - Alignment: 8 bytes
 - **API**:
