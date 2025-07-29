@@ -7,8 +7,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/keyboard.h"
-#include "../include/pic.h"
+#include "kernel/keyboard.h"
+#include "kernel/pic.h"
 
 /* External functions */
 extern void terminal_writestring(const char* data);

@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "paging.h"
+#include "kernel/paging.h"
 
 /* Virtual memory regions */
 #define KERNEL_VIRT_BASE    0x00000000  /* Kernel starts at 0 (identity mapped) */

@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "paging.h"
+#include "kernel/paging.h"
 
 /* Process states */
 typedef enum {

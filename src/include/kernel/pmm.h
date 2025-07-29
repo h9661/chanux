@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "multiboot.h"
+#include "arch/x86/multiboot.h"
 
 /* Page size constant - standard 4KB pages */
 #define PAGE_SIZE 4096

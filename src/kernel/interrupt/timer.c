@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "../include/timer.h"
-#include "../include/pic.h"
+#include "kernel/timer.h"
+#include "kernel/pic.h"
 
 /* External functions */
 extern void terminal_writestring(const char* data);

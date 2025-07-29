@@ -7,7 +7,7 @@
  */
 
 #include <stdint.h>
-#include "../include/pic.h"
+#include "kernel/pic.h"
 
 /* External functions */
 extern void terminal_writestring(const char* data);

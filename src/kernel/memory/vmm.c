@@ -8,9 +8,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../include/vmm.h"
-#include "../include/pmm.h"
-#include "../include/string.h"
+#include "kernel/vmm.h"
+#include "kernel/pmm.h"
+#include "lib/string.h"
 
 /* Current page directory */
 static page_directory_t* current_directory = NULL;

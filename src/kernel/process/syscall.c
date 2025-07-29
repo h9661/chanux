@@ -4,8 +4,8 @@
  * Handles system calls from user space applications
  */
 
-#include "../include/syscall.h"
-#include "../include/timer.h"
+#include "kernel/syscall.h"
+#include "kernel/timer.h"
 #include <stdint.h>
 
 /* Terminal functions (from terminal.c) */
