@@ -15,10 +15,10 @@
 
 /* Virtual memory regions */
 #define KERNEL_VIRT_BASE    0x00000000  /* Kernel starts at 0 (identity mapped) */
-#define KERNEL_HEAP_START   0x10000000  /* Kernel heap starts at 256MB */
-#define KERNEL_HEAP_SIZE    0x10000000  /* 256MB for kernel heap */
-#define USER_SPACE_START    0x40000000  /* User space starts at 1GB */
-#define USER_SPACE_END      0xBFFFF000  /* User space ends at 3GB */
+#define KERNEL_HEAP_START   0x04000000  /* Kernel heap starts at 64MB */
+#define KERNEL_HEAP_SIZE    0x04000000  /* 64MB for kernel heap */
+#define USER_SPACE_START    0x08000000  /* User space starts at 128MB */
+#define USER_SPACE_END      0x3FFFF000  /* User space ends at ~1GB */
 
 /* Initialize the virtual memory manager */
 void vmm_init(void);

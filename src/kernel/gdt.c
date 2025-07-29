@@ -91,28 +91,28 @@ void gdt_install() {
     gdt_set_gate(0, 0, 0, 0, 0);
     
     /* Kernel code segment
-     * Base: 0, Limit: 4GB, Access: 0x9A (present, ring 0, code segment, readable)
+     * Base: 0, Limit: 1GB, Access: 0x9A (present, ring 0, code segment, readable)
      * Granularity: 0xCF (4KB pages, 32-bit mode)
      */
-    gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
+    gdt_set_gate(1, 0, 0x3FFFFFFF, 0x9A, 0xCF);
     
     /* Kernel data segment
-     * Base: 0, Limit: 4GB, Access: 0x92 (present, ring 0, data segment, writable)
+     * Base: 0, Limit: 1GB, Access: 0x92 (present, ring 0, data segment, writable)
      * Granularity: 0xCF (4KB pages, 32-bit mode)
      */
-    gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+    gdt_set_gate(2, 0, 0x3FFFFFFF, 0x92, 0xCF);
     
     /* User code segment
-     * Base: 0, Limit: 4GB, Access: 0xFA (present, ring 3, code segment, readable)
+     * Base: 0, Limit: 1GB, Access: 0xFA (present, ring 3, code segment, readable)
      * Granularity: 0xCF (4KB pages, 32-bit mode)
      */
-    gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
+    gdt_set_gate(3, 0, 0x3FFFFFFF, 0xFA, 0xCF);
     
     /* User data segment
-     * Base: 0, Limit: 4GB, Access: 0xF2 (present, ring 3, data segment, writable)
+     * Base: 0, Limit: 1GB, Access: 0xF2 (present, ring 3, data segment, writable)
      * Granularity: 0xCF (4KB pages, 32-bit mode)
      */
-    gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
+    gdt_set_gate(4, 0, 0x3FFFFFFF, 0xF2, 0xCF);
     
     /* Load the GDT into the GDTR register */
     gdt_flush((uint32_t)&gp);
