@@ -51,47 +51,60 @@ chanux/
 ├── README.md           # This file
 ├── Makefile           # Build configuration with cross-compiler support
 ├── src/               # Source code
-│   ├── boot/          # Bootloader and early initialization
-│   │   └── boot.asm   # Multiboot-compliant bootloader
-│   ├── kernel/        # Kernel core code
-│   │   ├── kernel.c   # Main kernel entry point
-│   │   ├── gdt.c      # Global Descriptor Table implementation
-│   │   ├── gdt_flush.asm # GDT loading assembly routine
-│   │   ├── idt.c      # Interrupt Descriptor Table implementation
-│   │   ├── idt_load.asm  # IDT loading assembly routine
-│   │   ├── terminal.c # VGA text mode terminal driver
-│   │   ├── pmm.c      # Physical memory manager implementation
-│   │   ├── vmm.c      # Virtual memory manager implementation
-│   │   ├── paging_asm.asm # Paging assembly routines
-│   │   ├── isr.asm    # Interrupt service routines
-│   │   ├── heap.c     # Heap allocator implementation
-│   │   ├── pic.c      # Programmable Interrupt Controller implementation
-│   │   ├── irq.asm    # IRQ handler assembly stubs
-│   │   ├── keyboard.c # PS/2 keyboard driver implementation
-│   │   ├── timer.c    # PIT timer driver implementation
-│   │   ├── syscall.c  # System call handler implementation
-│   │   ├── syscall_asm.asm # System call interrupt handler
-│   │   ├── scheduler.c # Process scheduler implementation
-│   │   ├── tss.c      # Task State Segment management
-│   │   ├── tss_flush.asm # TSS loading assembly routine
-│   │   ├── switch.asm # Context switching assembly code
-│   │   └── linker.ld  # Linker script for kernel memory layout
+│   ├── arch/          # Architecture-specific code
+│   │   └── x86/       # x86 architecture implementation
+│   │       ├── boot/  # Bootloader and early initialization
+│   │       │   └── boot.asm   # Multiboot-compliant bootloader
+│   │       ├── cpu/   # CPU-specific features
+│   │       │   ├── gdt.c      # Global Descriptor Table
+│   │       │   ├── idt.c      # Interrupt Descriptor Table
+│   │       │   └── tss.c      # Task State Segment
+│   │       ├── asm/   # Assembly routines
+│   │       │   ├── gdt_flush.asm    # GDT loading
+│   │       │   ├── idt_load.asm     # IDT loading
+│   │       │   ├── irq.asm          # IRQ handlers
+│   │       │   ├── isr.asm          # ISR handlers
+│   │       │   ├── paging_asm.asm   # Paging routines
+│   │       │   ├── switch.asm       # Context switching
+│   │       │   ├── syscall_asm.asm  # System call entry
+│   │       │   └── tss_flush.asm    # TSS loading
+│   │       └── linker.ld  # Linker script
+│   ├── kernel/        # Core kernel subsystems
+│   │   ├── core/      # Main kernel code
+│   │   │   └── kernel.c   # Kernel entry point
+│   │   ├── memory/    # Memory management
+│   │   │   ├── pmm.c      # Physical memory manager
+│   │   │   ├── vmm.c      # Virtual memory manager
+│   │   │   └── heap.c     # Heap allocator
+│   │   ├── process/   # Process management
+│   │   │   ├── scheduler.c # Process scheduler
+│   │   │   └── syscall.c   # System call handler
+│   │   ├── interrupt/ # Interrupt handling
+│   │   │   ├── pic.c      # Programmable Interrupt Controller
+│   │   │   └── timer.c    # PIT timer driver
+│   │   └── io/        # I/O subsystems
+│   │       ├── terminal.c # VGA text terminal
+│   │       └── keyboard.c # PS/2 keyboard driver
 │   ├── drivers/       # Device drivers (future)
 │   ├── lib/           # Utility libraries
 │   │   └── string.c   # Memory manipulation functions
 │   └── include/       # Header files
-│       ├── string.h   # String/memory function declarations
-│       ├── multiboot.h # Multiboot specification structures
-│       ├── pmm.h      # Physical memory manager interface
-│       ├── paging.h   # Paging structures and constants
-│       ├── vmm.h      # Virtual memory manager interface
-│       ├── heap.h     # Heap allocator interface
-│       ├── pic.h      # PIC constants and function declarations
-│       ├── keyboard.h # Keyboard driver interface and scancodes
-│       ├── timer.h    # Timer driver interface and PIT constants
-│       ├── syscall.h  # System call numbers and interfaces
-│       ├── scheduler.h # Process scheduler interface and PCB structure
-│       └── tss.h      # Task State Segment structure
+│       ├── arch/      # Architecture-specific headers
+│       │   └── x86/
+│       │       ├── multiboot.h # Multiboot specification
+│       │       └── tss.h      # Task State Segment
+│       ├── kernel/    # Kernel subsystem headers
+│       │   ├── paging.h   # Paging structures
+│       │   ├── pmm.h      # Physical memory manager
+│       │   ├── vmm.h      # Virtual memory manager
+│       │   ├── heap.h     # Heap allocator
+│       │   ├── scheduler.h # Process scheduler
+│       │   ├── syscall.h  # System calls
+│       │   ├── pic.h      # PIC interface
+│       │   ├── timer.h    # Timer interface
+│       │   └── keyboard.h # Keyboard interface
+│       └── lib/       # Library headers
+│           └── string.h   # String functions
 ├── build/             # Build output directory (generated)
 ├── iso/               # ISO creation directory (generated)
 └── docs/              # Documentation

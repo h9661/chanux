@@ -4,9 +4,9 @@
  * Manages the TSS for privilege level switching between kernel and user mode.
  */
 
-#include "../include/tss.h"
+#include "arch/x86/tss.h"
 #include <stdint.h>
-#include <string.h>
+#include "lib/string.h"
 
 /* External functions */
 extern void gdt_set_gate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran);

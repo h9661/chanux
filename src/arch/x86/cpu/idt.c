@@ -6,7 +6,7 @@
  */
 
 #include <stdint.h>
-#include "../include/string.h"
+#include "lib/string.h"
 
 /* IDT Entry Structure
  * Each entry is 8 bytes and defines an interrupt handler

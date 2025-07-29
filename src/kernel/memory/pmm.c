@@ -8,8 +8,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../include/pmm.h"
-#include "../include/string.h"
+#include "kernel/pmm.h"
+#include "lib/string.h"
 
 /* Bitmap for tracking page allocation status
  * Each bit represents one page: 0 = free, 1 = used

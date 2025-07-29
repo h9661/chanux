@@ -28,9 +28,9 @@ LD = i686-elf-ld
 CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra -I$(SRC_DIR)/include
 
 # Linker flags:
-# -T src/kernel/linker.ld: Use custom linker script for kernel memory layout
+# -T src/arch/x86/linker.ld: Use custom linker script for kernel memory layout
 # -nostdlib: Don't link against standard system libraries
-LDFLAGS = -T src/kernel/linker.ld -nostdlib
+LDFLAGS = -T src/arch/x86/linker.ld -nostdlib
 
 # Assembler flags:
 # -f elf32: Output 32-bit ELF object files
@@ -45,11 +45,18 @@ SRC_DIR = src
 # Build output directory (for intermediate files)
 BUILD_DIR = build
 
-# Kernel source directory (C and assembly files)
-KERNEL_DIR = $(SRC_DIR)/kernel
+# Architecture-specific directories
+ARCH_DIR = $(SRC_DIR)/arch/x86
 
-# Boot-related source directory (bootloader, multiboot headers)
-BOOT_DIR = $(SRC_DIR)/boot
+# Kernel subsystem directories
+KERNEL_CORE_DIR = $(SRC_DIR)/kernel/core
+KERNEL_MEM_DIR = $(SRC_DIR)/kernel/memory
+KERNEL_PROC_DIR = $(SRC_DIR)/kernel/process
+KERNEL_INT_DIR = $(SRC_DIR)/kernel/interrupt
+KERNEL_IO_DIR = $(SRC_DIR)/kernel/io
+
+# Library directory
+LIB_DIR = $(SRC_DIR)/lib
 
 # ===== OUTPUT FILES =====
 
@@ -62,11 +69,18 @@ ISO = chanux.iso
 # ===== SOURCE FILE DISCOVERY =====
 # Automatically find all source files using wildcard patterns
 
-# Find all C source files in kernel and lib directories
-C_SOURCES = $(wildcard $(KERNEL_DIR)/*.c) $(wildcard $(SRC_DIR)/lib/*.c)
+# Find all C source files in the new structure
+C_SOURCES = $(wildcard $(ARCH_DIR)/cpu/*.c) \
+            $(wildcard $(KERNEL_CORE_DIR)/*.c) \
+            $(wildcard $(KERNEL_MEM_DIR)/*.c) \
+            $(wildcard $(KERNEL_PROC_DIR)/*.c) \
+            $(wildcard $(KERNEL_INT_DIR)/*.c) \
+            $(wildcard $(KERNEL_IO_DIR)/*.c) \
+            $(wildcard $(LIB_DIR)/*.c)
 
-# Find all assembly source files in kernel and boot directories
-ASM_SOURCES = $(wildcard $(KERNEL_DIR)/*.asm) $(wildcard $(BOOT_DIR)/*.asm)
+# Find all assembly source files in the new structure
+ASM_SOURCES = $(wildcard $(ARCH_DIR)/boot/*.asm) \
+              $(wildcard $(ARCH_DIR)/asm/*.asm)
 
 # ===== OBJECT FILE GENERATION =====
 # Transform source file paths to object file paths in build directory
@@ -90,7 +104,10 @@ all: $(KERNEL)
 # Create build directory structure
 # The pipe (|) makes this an order-only prerequisite
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)/kernel $(BUILD_DIR)/boot $(BUILD_DIR)/lib
+	mkdir -p $(BUILD_DIR)/arch/x86/boot $(BUILD_DIR)/arch/x86/cpu $(BUILD_DIR)/arch/x86/asm
+	mkdir -p $(BUILD_DIR)/kernel/core $(BUILD_DIR)/kernel/memory $(BUILD_DIR)/kernel/process
+	mkdir -p $(BUILD_DIR)/kernel/interrupt $(BUILD_DIR)/kernel/io
+	mkdir -p $(BUILD_DIR)/lib
 
 # Pattern rule for compiling C source files to object files
 # $< is the first prerequisite (the .c file)

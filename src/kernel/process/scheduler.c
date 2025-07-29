@@ -4,13 +4,13 @@
  * Implements a simple round-robin scheduler for process management.
  */
 
-#include "../include/scheduler.h"
-#include "../include/tss.h"
-#include "../include/pmm.h"
-#include "../include/vmm.h"
-#include "../include/heap.h"
-#include "../include/timer.h"
-#include "../include/string.h"
+#include "kernel/scheduler.h"
+#include "arch/x86/tss.h"
+#include "kernel/pmm.h"
+#include "kernel/vmm.h"
+#include "kernel/heap.h"
+#include "kernel/timer.h"
+#include "lib/string.h"
 #include <stddef.h>
 
 /* External functions */

@@ -5,14 +5,14 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../include/multiboot.h"
-#include "../include/pmm.h"
-#include "../include/vmm.h"
-#include "../include/heap.h"
-#include "../include/pic.h"
-#include "../include/timer.h"
-#include "../include/keyboard.h"
-#include "../include/scheduler.h"
+#include "arch/x86/multiboot.h"
+#include "kernel/pmm.h"
+#include "kernel/vmm.h"
+#include "kernel/heap.h"
+#include "kernel/pic.h"
+#include "kernel/timer.h"
+#include "kernel/keyboard.h"
+#include "kernel/scheduler.h"
 
 /* External function declarations for system initialization */
 void gdt_install(void);        /* Set up Global Descriptor Table */

@@ -7,9 +7,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../include/heap.h"
-#include "../include/vmm.h"
-#include "../include/string.h"
+#include "kernel/heap.h"
+#include "kernel/vmm.h"
+#include "lib/string.h"
 
 /* Global heap state */
 static heap_block_t* heap_start = NULL;
