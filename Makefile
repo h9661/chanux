@@ -76,7 +76,8 @@ C_SOURCES = $(wildcard $(ARCH_DIR)/cpu/*.c) \
             $(wildcard $(KERNEL_PROC_DIR)/*.c) \
             $(wildcard $(KERNEL_INT_DIR)/*.c) \
             $(wildcard $(KERNEL_IO_DIR)/*.c) \
-            $(wildcard $(LIB_DIR)/*.c)
+            $(wildcard $(LIB_DIR)/*.c) \
+            $(wildcard $(SRC_DIR)/tests/*.c)
 
 # Find all assembly source files in the new structure
 ASM_SOURCES = $(wildcard $(ARCH_DIR)/boot/*.asm) \
@@ -107,7 +108,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/arch/x86/boot $(BUILD_DIR)/arch/x86/cpu $(BUILD_DIR)/arch/x86/asm
 	mkdir -p $(BUILD_DIR)/kernel/core $(BUILD_DIR)/kernel/memory $(BUILD_DIR)/kernel/process
 	mkdir -p $(BUILD_DIR)/kernel/interrupt $(BUILD_DIR)/kernel/io
-	mkdir -p $(BUILD_DIR)/lib
+	mkdir -p $(BUILD_DIR)/lib $(BUILD_DIR)/tests
 
 # Pattern rule for compiling C source files to object files
 # $< is the first prerequisite (the .c file)

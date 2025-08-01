@@ -108,6 +108,11 @@ void kernel_main(uint32_t magic, uint32_t addr) {
      */
     scheduler_init();
     
+    /* Run memory isolation tests first */
+    extern void run_memory_isolation_tests(void);
+    terminal_writestring("\nRunning memory isolation tests...\n");
+    run_memory_isolation_tests();
+    
     /* Create test processes */
     terminal_writestring("\nCreating test processes...\n");
     
