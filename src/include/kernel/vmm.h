@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "kernel/paging.h"
 
 /* Virtual memory regions */
@@ -86,5 +87,12 @@ void vmm_page_fault_handler(uint32_t error_code, uint32_t fault_addr);
 
 /* Debug: print page mappings */
 void vmm_print_mappings(page_directory_t* page_dir, uint32_t virt_start, uint32_t virt_end);
+
+/* Security-enhanced functions */
+void vmm_map_page_secure(page_directory_t* page_dir, uint32_t virt_addr, 
+                        uint32_t phys_addr, uint32_t flags);
+bool vmm_is_user_accessible(page_directory_t* page_dir, uint32_t virt_addr);
+page_table_entry_t* vmm_get_page_entry(page_directory_t* page_dir, uint32_t virt_addr);
+page_directory_t* vmm_create_user_page_directory(void);
 
 #endif /* _VMM_H */

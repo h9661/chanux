@@ -357,3 +357,34 @@ void process_sleep(uint32_t ms) {
 scheduler_stats_t scheduler_get_stats(void) {
     return stats;
 }
+
+/*
+ * process_terminate - Terminate a process with given signal
+ * @proc: Process to terminate
+ * @signal: Signal number (for future use)
+ */
+void process_terminate(process_t* proc, int signal) {
+    (void)signal; /* Suppress unused parameter warning */
+    
+    if (!proc || proc->pid == 0) {
+        terminal_writestring("Cannot terminate idle process!\n");
+        return;
+    }
+    
+    terminal_writestring("Terminating process: ");
+    terminal_writestring(proc->name);
+    terminal_writestring(" (PID: ");
+    terminal_write_dec(proc->pid);
+    terminal_writestring(")\n");
+    
+    /* Mark process as terminated */
+    proc->state = PROCESS_STATE_TERMINATED;
+    
+    /* If terminating current process, schedule next */
+    if (proc == current_process) {
+        schedule();
+        /* Should not return here */
+    }
+    
+    stats.processes_terminated++;
+}

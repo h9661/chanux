@@ -360,32 +360,15 @@ page_directory_t* vmm_clone_directory(page_directory_t* src) {
     return new_dir;
 }
 
+/* Forward declaration of secure handler */
+extern void vmm_page_fault_handler_secure(uint32_t error_code, uint32_t fault_addr);
+
 /*
- * Page fault handler
+ * Page fault handler - now uses secure handler
  */
 void vmm_page_fault_handler(uint32_t error_code, uint32_t fault_addr) {
-    terminal_writestring("\nPage Fault!\n");
-    terminal_writestring("Fault address: ");
-    terminal_write_hex(fault_addr);
-    terminal_writestring("\nError code: ");
-    terminal_write_hex(error_code);
-    terminal_writestring("\n");
-    
-    if (!(error_code & PF_PRESENT)) {
-        terminal_writestring("Page not present\n");
-    }
-    if (error_code & PF_WRITE) {
-        terminal_writestring("Write access violation\n");
-    }
-    if (error_code & PF_USER) {
-        terminal_writestring("User mode access\n");
-    }
-    
-    /* For now, just halt on page fault */
-    terminal_writestring("System halted\n");
-    while (1) {
-        __asm__ __volatile__ ("hlt");
-    }
+    /* Use the secure page fault handler with enhanced security checks */
+    vmm_page_fault_handler_secure(error_code, fault_addr);
 }
 
 /*
