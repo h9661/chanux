@@ -83,7 +83,11 @@ KERNEL_ASM_SRCS = $(KERNEL_DIR)/arch/x86_64/boot.asm
 
 # Kernel C sources
 KERNEL_C_SRCS = $(KERNEL_DIR)/kernel.c \
-                $(KERNEL_DIR)/drivers/vga/vga.c
+                $(KERNEL_DIR)/drivers/vga/vga.c \
+                $(KERNEL_DIR)/lib/string.c \
+                $(KERNEL_DIR)/mm/pmm.c \
+                $(KERNEL_DIR)/mm/vmm.c \
+                $(KERNEL_DIR)/mm/heap.c
 
 # =============================================================================
 # Object Files
@@ -196,6 +200,12 @@ $(BUILD_DIR)/arch/x86_64:
 
 $(BUILD_DIR)/drivers/vga:
 	@mkdir -p $(BUILD_DIR)/drivers/vga
+
+$(BUILD_DIR)/lib:
+	@mkdir -p $(BUILD_DIR)/lib
+
+$(BUILD_DIR)/mm:
+	@mkdir -p $(BUILD_DIR)/mm
 
 # =============================================================================
 # Run in QEMU

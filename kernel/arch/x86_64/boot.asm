@@ -29,16 +29,12 @@ _start:
     ; Clear direction flag (required by System V ABI)
     cld
 
-    ; Set up kernel stack
-    mov rsp, kernel_stack_top
+    ; IMPORTANT: Save boot info pointer in callee-saved register BEFORE touching BSS
+    ; RDI contains boot info pointer from bootloader
+    ; We must save it before clearing BSS since our stack is in BSS!
+    mov r15, rdi
 
-    ; Clear base pointer
-    xor rbp, rbp
-
-    ; Clear BSS section
-    ; RDI already contains boot info pointer, save it
-    push rdi
-
+    ; Clear BSS section FIRST (before setting up stack, since stack is in BSS)
     extern __bss_start
     extern __bss_end
 
@@ -48,11 +44,17 @@ _start:
     xor al, al
     rep stosb
 
-    ; Restore boot info pointer
-    pop rdi
+    ; NOW set up kernel stack (after BSS is cleared)
+    mov rsp, kernel_stack_top
+
+    ; Clear base pointer
+    xor rbp, rbp
+
+    ; Restore boot info pointer to RDI for kernel_main argument
+    mov rdi, r15
 
     ; Call kernel main
-    ; First argument (RDI) = boot info pointer (already set)
+    ; First argument (RDI) = boot info pointer
     call kernel_main
 
     ; If kernel_main returns (it shouldn't), halt

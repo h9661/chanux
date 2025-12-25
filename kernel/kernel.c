@@ -22,6 +22,10 @@
  */
 
 #include "include/kernel.h"
+#include "include/mm/mm.h"
+#include "include/mm/pmm.h"
+#include "include/mm/vmm.h"
+#include "include/mm/heap.h"
 #include "drivers/vga/vga.h"
 
 /* =============================================================================
@@ -98,6 +102,35 @@ static void print_memory_map(boot_info_t* boot_info) {
 }
 
 /* =============================================================================
+ * Memory Management Initialization
+ * =============================================================================
+ */
+
+void mm_init(boot_info_t* boot_info) {
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[MM] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Initializing Memory Management Subsystem...\n");
+    kprintf("\n");
+
+    /* Step 1: Physical Memory Manager */
+    pmm_init(boot_info);
+
+    /* Step 2: Virtual Memory Manager */
+    vmm_init();
+
+    /* Step 3: Kernel Heap */
+    heap_init();
+
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[MM] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Memory Management initialized successfully!\n");
+}
+
+/* =============================================================================
  * Kernel Panic
  * =============================================================================
  */
@@ -156,7 +189,13 @@ void kernel_main(void* boot_info_ptr) {
     }
 
     /* ==========================================================================
-     * Step 3: Display System Status
+     * Step 3: Initialize Memory Management
+     * ==========================================================================
+     */
+    mm_init(boot_info);
+
+    /* ==========================================================================
+     * Step 4: Display System Status
      * ==========================================================================
      */
     kprintf("\n");
@@ -171,20 +210,20 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Running in 64-bit Long Mode\n");
 
     /* ==========================================================================
-     * Phase 1 Complete - Basic Boot
+     * Phase 2 Complete - Memory Management
      * ==========================================================================
      */
     kprintf("\n");
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("=================================================\n");
-    kprintf("  Phase 1 Complete: Basic Boot Successful!\n");
+    kprintf("  Phase 2 Complete: Memory Management Ready!\n");
     kprintf("=================================================\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("\n");
-    kprintf("Next steps (Phase 2):\n");
-    kprintf("  - Physical Memory Manager (PMM)\n");
-    kprintf("  - Virtual Memory Manager (VMM)\n");
-    kprintf("  - Kernel Heap (kmalloc/kfree)\n");
+    kprintf("Completed:\n");
+    kprintf("  [x] Physical Memory Manager (PMM)\n");
+    kprintf("  [x] Virtual Memory Manager (VMM)\n");
+    kprintf("  [x] Kernel Heap (kmalloc/kfree)\n");
     kprintf("\n");
     kprintf("Next steps (Phase 3):\n");
     kprintf("  - Interrupt Descriptor Table (IDT)\n");
@@ -193,7 +232,7 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("System halted. Chanux is ready for development!\n");
+    kprintf("System halted. Memory management is operational!\n");
     kprintf("\n");
 
     /* ==========================================================================

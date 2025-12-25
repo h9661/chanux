@@ -364,9 +364,10 @@ get_memory_map:
     jmp .loop
 
 .done:
-    ; Store entry count at MEMORY_MAP_ADDR
-    mov ax, bp
-    mov [MEMORY_MAP_ADDR], ax
+    ; Store entry count at MEMORY_MAP_ADDR as 32-bit value
+    ; (kernel expects uint32_t memory_map_entries)
+    movzx eax, bp               ; Zero-extend 16-bit count to 32-bit
+    mov [MEMORY_MAP_ADDR], eax  ; Store full 4 bytes
 
     pop es
     popa                        ; Restore all 16-bit registers
@@ -494,8 +495,9 @@ setup_page_tables:
     rep stosd
 
     ; ==========================================================================
-    ; Set up identity mapping for first 2MB (using 2MB huge pages)
+    ; Set up identity mapping for first 8MB (using 2MB huge pages)
     ; This maps virtual 0x0 -> physical 0x0
+    ; Required for: kernel (1MB), PMM bitmap (2MB), page tables (3MB), heap (4MB+)
     ; ==========================================================================
 
     ; PML4[0] -> PDPT
@@ -508,10 +510,25 @@ setup_page_tables:
     or eax, PAGE_FLAGS
     mov [PDPT_ADDR], eax
 
-    ; PD[0] -> 2MB huge page at physical 0
+    ; PD[0] -> 2MB huge page at physical 0x00000000 (0-2MB)
     mov eax, 0x00000000
     or eax, PAGE_FLAGS_HUGE
     mov [PD_ADDR], eax
+
+    ; PD[1] -> 2MB huge page at physical 0x00200000 (2-4MB)
+    mov eax, 0x00200000
+    or eax, PAGE_FLAGS_HUGE
+    mov [PD_ADDR + 8], eax
+
+    ; PD[2] -> 2MB huge page at physical 0x00400000 (4-6MB)
+    mov eax, 0x00400000
+    or eax, PAGE_FLAGS_HUGE
+    mov [PD_ADDR + 16], eax
+
+    ; PD[3] -> 2MB huge page at physical 0x00600000 (6-8MB)
+    mov eax, 0x00600000
+    or eax, PAGE_FLAGS_HUGE
+    mov [PD_ADDR + 24], eax
 
     ; ==========================================================================
     ; Set up higher-half mapping for kernel

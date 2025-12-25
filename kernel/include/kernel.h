@@ -28,7 +28,33 @@
 
 #define PAGE_SIZE           4096
 #define KERNEL_PHYS_BASE    0x100000            /* 1MB */
-#define KERNEL_VIRT_BASE    0xFFFFFFFF80000000  /* Higher half */
+#define KERNEL_VIRT_BASE    0xFFFFFFFF80000000ULL  /* Higher half */
+
+/* =============================================================================
+ * Utility Macros
+ * =============================================================================
+ */
+
+/* Align value up to alignment boundary */
+#define ALIGN_UP(x, align)      (((x) + ((align) - 1)) & ~((align) - 1))
+
+/* Align value down to alignment boundary */
+#define ALIGN_DOWN(x, align)    ((x) & ~((align) - 1))
+
+/* Check if value is aligned */
+#define IS_ALIGNED(x, align)    (((x) & ((align) - 1)) == 0)
+
+/* Minimum and maximum */
+#define MIN(a, b)               ((a) < (b) ? (a) : (b))
+#define MAX(a, b)               ((a) > (b) ? (a) : (b))
+
+/* Convert between physical and virtual addresses (for identity-mapped region) */
+#define PHYS_TO_VIRT(phys)      ((void*)((uint64_t)(phys) + KERNEL_VIRT_BASE))
+#define VIRT_TO_PHYS(virt)      ((phys_addr_t)((uint64_t)(virt) - KERNEL_VIRT_BASE))
+
+/* Page frame number from address */
+#define ADDR_TO_PFN(addr)       ((addr) / PAGE_SIZE)
+#define PFN_TO_ADDR(pfn)        ((pfn) * PAGE_SIZE)
 
 /* =============================================================================
  * Boot Information Structure
