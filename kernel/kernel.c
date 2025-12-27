@@ -26,6 +26,12 @@
 #include "include/mm/pmm.h"
 #include "include/mm/vmm.h"
 #include "include/mm/heap.h"
+#include "include/gdt.h"
+#include "include/interrupts/idt.h"
+#include "include/interrupts/irq.h"
+#include "include/drivers/pic.h"
+#include "include/drivers/pit.h"
+#include "include/drivers/keyboard.h"
 #include "drivers/vga/vga.h"
 
 /* =============================================================================
@@ -131,6 +137,70 @@ void mm_init(boot_info_t* boot_info) {
 }
 
 /* =============================================================================
+ * Interrupt Subsystem Initialization
+ * =============================================================================
+ */
+
+static void interrupts_init(void) {
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Initializing interrupt subsystem...\n");
+
+    /* Step 1: Load GDT with TSS */
+    gdt_init();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("GDT with TSS loaded\n");
+
+    /* Step 2: Initialize IRQ framework */
+    irq_init();
+
+    /* Step 3: Initialize IDT */
+    idt_init();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("IDT initialized with 256 entries\n");
+
+    /* Step 4: Initialize PIC */
+    pic_init();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("PIC remapped: IRQ 0-15 -> vectors 32-47\n");
+
+    /* Step 5: Initialize PIT timer */
+    pit_init();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("PIT configured for 100 Hz (10 ms/tick)\n");
+
+    /* Step 6: Initialize keyboard */
+    keyboard_init();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("PS/2 keyboard driver initialized\n");
+
+    /* Step 7: Enable interrupts */
+    sti();
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Interrupts enabled!\n");
+
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[INT] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Interrupt subsystem ready\n");
+}
+
+/* =============================================================================
  * Kernel Panic
  * =============================================================================
  */
@@ -195,7 +265,13 @@ void kernel_main(void* boot_info_ptr) {
     mm_init(boot_info);
 
     /* ==========================================================================
-     * Step 4: Display System Status
+     * Step 4: Initialize Interrupt Subsystem
+     * ==========================================================================
+     */
+    interrupts_init();
+
+    /* ==========================================================================
+     * Step 5: Display System Status
      * ==========================================================================
      */
     kprintf("\n");
@@ -210,13 +286,13 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Running in 64-bit Long Mode\n");
 
     /* ==========================================================================
-     * Phase 2 Complete - Memory Management
+     * Phase 3 Complete - Interrupts and I/O
      * ==========================================================================
      */
     kprintf("\n");
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("=================================================\n");
-    kprintf("  Phase 2 Complete: Memory Management Ready!\n");
+    kprintf("  Phase 3 Complete: Interrupts and I/O Ready!\n");
     kprintf("=================================================\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("\n");
@@ -224,24 +300,36 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("  [x] Physical Memory Manager (PMM)\n");
     kprintf("  [x] Virtual Memory Manager (VMM)\n");
     kprintf("  [x] Kernel Heap (kmalloc/kfree)\n");
+    kprintf("  [x] Interrupt Descriptor Table (IDT)\n");
+    kprintf("  [x] GDT with TSS (double fault protection)\n");
+    kprintf("  [x] PIC remapping (8259A)\n");
+    kprintf("  [x] Timer (PIT at 100Hz)\n");
+    kprintf("  [x] PS/2 Keyboard Driver\n");
     kprintf("\n");
-    kprintf("Next steps (Phase 3):\n");
-    kprintf("  - Interrupt Descriptor Table (IDT)\n");
-    kprintf("  - Exception Handlers\n");
-    kprintf("  - Timer (PIT) and Keyboard Drivers\n");
+    kprintf("Next steps (Phase 4):\n");
+    kprintf("  - Process management\n");
+    kprintf("  - Scheduler\n");
     kprintf("\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("System halted. Memory management is operational!\n");
-    kprintf("\n");
+    kprintf("Type something: ");
 
     /* ==========================================================================
-     * Kernel Main Loop
+     * Kernel Main Loop - Keyboard Echo Demo
      * ==========================================================================
-     * For now, just halt. In later phases, this will be replaced by the
-     * scheduler loop.
      */
     for (;;) {
-        halt();
+        if (keyboard_has_key()) {
+            char c = keyboard_getchar();
+            if (c == '\n') {
+                kprintf("\nType something: ");
+            } else if (c == '\b') {
+                /* Handle backspace */
+                vga_putchar('\b');
+            } else {
+                vga_putchar(c);
+            }
+        }
+        halt();  /* Wait for next interrupt */
     }
 }

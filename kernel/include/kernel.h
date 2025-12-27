@@ -172,4 +172,11 @@ static inline void write_cr3(uint64_t value) {
     __asm__ volatile ("mov %0, %%cr3" : : "r"(value));
 }
 
+/* Read CR2 (page fault linear address) */
+static inline uint64_t read_cr2(void) {
+    uint64_t value;
+    __asm__ volatile ("mov %%cr2, %0" : "=r"(value));
+    return value;
+}
+
 #endif /* CHANUX_KERNEL_H */
