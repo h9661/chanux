@@ -25,6 +25,15 @@ An educational x86_64 operating system built from scratch.
 - **PIT Timer**: 100Hz system clock (10ms resolution)
 - **PS/2 Keyboard Driver**: Scancode set 1, circular input buffer, modifier key tracking
 
+### Phase 4: Process Management
+- **Process Control Block (PCB)**: Full process state tracking (PID, state, stack, scheduling info)
+- **Process States**: UNUSED, READY, RUNNING, BLOCKED, TERMINATED
+- **Kernel Stack**: 8KB per-process kernel stack with 16-byte alignment
+- **Context Switching**: Assembly-based register save/restore with TSS.RSP0 updates
+- **Round-Robin Scheduler**: Preemptive scheduling with 100ms time slices
+- **Process API**: `process_create()`, `process_exit()`, `process_yield()`, `process_block()`/`unblock()`
+- **Timer Integration**: PIT IRQ0 triggers scheduler tick for preemption
+
 ## Building
 
 ### Requirements
@@ -67,7 +76,8 @@ chanux/
 │   ├── arch/x86_64/
 │   │   ├── boot.asm             # Kernel entry point
 │   │   ├── gdt.c                # GDT with TSS
-│   │   └── idt.asm              # ISR/IRQ stubs, IDT loading
+│   │   ├── idt.asm              # ISR/IRQ stubs, IDT loading
+│   │   └── context.asm          # Context switch assembly
 │   ├── interrupts/
 │   │   ├── idt.c                # IDT initialization
 │   │   ├── isr.c                # Exception handlers
@@ -81,6 +91,9 @@ chanux/
 │   │   ├── pmm.c                # Physical memory manager
 │   │   ├── vmm.c                # Virtual memory manager
 │   │   └── heap.c               # Kernel heap allocator
+│   ├── proc/
+│   │   ├── process.c            # Process management (PCB, create/exit)
+│   │   └── sched.c              # Round-robin scheduler
 │   ├── lib/
 │   │   └── string.c             # String utilities (memset, memcpy, etc.)
 │   ├── include/                 # Kernel headers
@@ -95,7 +108,7 @@ chanux/
 - [x] **Phase 1**: Bootloader and minimal kernel
 - [x] **Phase 2**: Memory management (PMM, VMM, heap)
 - [x] **Phase 3**: Interrupts and I/O (IDT, GDT with TSS, PIC, PIT, keyboard)
-- [ ] **Phase 4**: Process management (scheduler)
+- [x] **Phase 4**: Process management (PCB, round-robin scheduler, context switching)
 - [ ] **Phase 5**: System calls and user mode
 - [ ] **Phase 6**: File system and shell
 
@@ -108,7 +121,28 @@ BIOS → MBR (Stage 1) → Stage 2 → Protected Mode → Long Mode → kernel_m
        512 bytes        16KB      32-bit          64-bit
 
 kernel_main():
-  └→ VGA init → Memory init (PMM/VMM/Heap) → Interrupt init → Keyboard echo loop
+  └→ VGA init → Memory init → Interrupt init → Process init → sched_start()
+                (PMM/VMM/Heap)  (GDT/IDT/PIC/PIT)  (idle + demo)   (never returns)
+```
+
+### Scheduler Architecture
+
+```
+Timer Interrupt (IRQ0, 100Hz)
+        │
+        ▼
+  sched_tick()
+        │
+        ├── Decrement time_slice
+        │
+        └── time_slice == 0?
+               │
+               ▼
+          schedule()
+               │
+               ├── Pick next from run queue (round-robin)
+               ├── Update TSS.RSP0 for new process
+               └── context_switch() → Switch stacks → New process runs
 ```
 
 ### Memory Layout
@@ -141,7 +175,25 @@ After boot, the kernel:
 4. Loads GDT with TSS (for double fault protection)
 5. Sets up IDT with exception handlers
 6. Remaps PIC and enables timer/keyboard IRQs
-7. Enters keyboard echo loop - type and see characters appear!
+7. Initializes process management (creates idle process PID 0)
+8. Creates demo processes and starts the round-robin scheduler
+9. Demo processes run concurrently, printing tick messages
+
+### Process Demo
+
+When the OS boots, it creates two demo processes that demonstrate preemptive multitasking:
+
+```
+[Process 1] Started!
+[Process 2] Started!
+[P1] tick 1
+[P2] tick 1
+[P1] tick 2
+[P2] tick 2
+...
+```
+
+The processes are preempted by the timer interrupt every 100ms, showing the scheduler switching between them.
 
 ## License
 

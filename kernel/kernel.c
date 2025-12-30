@@ -32,6 +32,8 @@
 #include "include/drivers/pic.h"
 #include "include/drivers/pit.h"
 #include "include/drivers/keyboard.h"
+#include "include/proc/process.h"
+#include "include/proc/sched.h"
 #include "drivers/vga/vga.h"
 
 /* =============================================================================
@@ -134,6 +136,85 @@ void mm_init(boot_info_t* boot_info) {
     kprintf("[MM] ");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("Memory Management initialized successfully!\n");
+}
+
+/* =============================================================================
+ * Interrupt Subsystem Initialization
+ * =============================================================================
+ */
+
+/* =============================================================================
+ * Demo Processes for Phase 4
+ * =============================================================================
+ */
+
+/**
+ * Demo process A - prints tick messages.
+ */
+static void demo_process_a(void* arg) {
+    int id = (int)(uint64_t)arg;
+    int count = 0;
+
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[Process %d] ", id);
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Started!\n");
+
+    while (1) {
+        /* Print tick message every ~1 second (100 ticks) */
+        for (volatile int i = 0; i < 5000000; i++) {
+            /* Busy wait - consumes CPU time */
+        }
+
+        count++;
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        kprintf("[P%d] ", id);
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        kprintf("tick %d\n", count);
+
+        /* Exit after 10 ticks for demo purposes */
+        if (count >= 10) {
+            vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+            kprintf("[Process %d] ", id);
+            vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+            kprintf("Finished!\n");
+            break;
+        }
+    }
+}
+
+/**
+ * Demo process B - similar to A but with different timing.
+ */
+static void demo_process_b(void* arg) {
+    int id = (int)(uint64_t)arg;
+    int count = 0;
+
+    vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+    kprintf("[Process %d] ", id);
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Started!\n");
+
+    while (1) {
+        /* Slightly different timing than process A */
+        for (volatile int i = 0; i < 4000000; i++) {
+            /* Busy wait */
+        }
+
+        count++;
+        vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+        kprintf("[P%d] ", id);
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        kprintf("tick %d\n", count);
+
+        if (count >= 12) {
+            vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+            kprintf("[Process %d] ", id);
+            vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+            kprintf("Finished!\n");
+            break;
+        }
+    }
 }
 
 /* =============================================================================
@@ -286,13 +367,38 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Running in 64-bit Long Mode\n");
 
     /* ==========================================================================
-     * Phase 3 Complete - Interrupts and I/O
+     * Step 5: Initialize Process Management (Phase 4)
+     * ==========================================================================
+     */
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[PROC] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Initializing process management...\n");
+
+    /* Initialize process subsystem (creates idle process) */
+    process_init();
+
+    /* Initialize scheduler */
+    sched_init();
+
+    /* Create demo processes */
+    process_create("demo_a", demo_process_a, (void*)1);
+    process_create("demo_b", demo_process_b, (void*)2);
+
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[PROC] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Process management ready!\n");
+
+    /* ==========================================================================
+     * Phase 4 Complete - Process Management
      * ==========================================================================
      */
     kprintf("\n");
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     kprintf("=================================================\n");
-    kprintf("  Phase 3 Complete: Interrupts and I/O Ready!\n");
+    kprintf("  Phase 4 Complete: Process Management Ready!\n");
     kprintf("=================================================\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("\n");
@@ -305,31 +411,24 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("  [x] PIC remapping (8259A)\n");
     kprintf("  [x] Timer (PIT at 100Hz)\n");
     kprintf("  [x] PS/2 Keyboard Driver\n");
+    kprintf("  [x] Process Management (PCB, create/exit)\n");
+    kprintf("  [x] Round-Robin Scheduler (preemptive)\n");
     kprintf("\n");
-    kprintf("Next steps (Phase 4):\n");
-    kprintf("  - Process management\n");
-    kprintf("  - Scheduler\n");
+    kprintf("Next steps (Phase 5):\n");
+    kprintf("  - User mode (Ring 3)\n");
+    kprintf("  - System calls\n");
     kprintf("\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("Type something: ");
+    kprintf("Starting scheduler with demo processes...\n\n");
 
     /* ==========================================================================
-     * Kernel Main Loop - Keyboard Echo Demo
+     * Start the Scheduler
      * ==========================================================================
+     * This never returns - control transfers to the first ready process.
      */
-    for (;;) {
-        if (keyboard_has_key()) {
-            char c = keyboard_getchar();
-            if (c == '\n') {
-                kprintf("\nType something: ");
-            } else if (c == '\b') {
-                /* Handle backspace */
-                vga_putchar('\b');
-            } else {
-                vga_putchar(c);
-            }
-        }
-        halt();  /* Wait for next interrupt */
-    }
+    sched_start();
+
+    /* Should never reach here */
+    PANIC("sched_start returned!");
 }

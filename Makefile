@@ -80,7 +80,8 @@ BOOT_STAGE2 = $(BOOT_DIR)/stage2/loader.asm
 
 # Kernel assembly sources
 KERNEL_ASM_SRCS = $(KERNEL_DIR)/arch/x86_64/boot.asm \
-                  $(KERNEL_DIR)/arch/x86_64/idt.asm
+                  $(KERNEL_DIR)/arch/x86_64/idt.asm \
+                  $(KERNEL_DIR)/arch/x86_64/context.asm
 
 # Kernel C sources
 KERNEL_C_SRCS = $(KERNEL_DIR)/kernel.c \
@@ -95,7 +96,9 @@ KERNEL_C_SRCS = $(KERNEL_DIR)/kernel.c \
                 $(KERNEL_DIR)/interrupts/irq.c \
                 $(KERNEL_DIR)/drivers/pic/pic.c \
                 $(KERNEL_DIR)/drivers/pit/pit.c \
-                $(KERNEL_DIR)/drivers/keyboard/keyboard.c
+                $(KERNEL_DIR)/drivers/keyboard/keyboard.c \
+                $(KERNEL_DIR)/proc/process.c \
+                $(KERNEL_DIR)/proc/sched.c
 
 # =============================================================================
 # Object Files
@@ -226,6 +229,9 @@ $(BUILD_DIR)/drivers/pit:
 
 $(BUILD_DIR)/drivers/keyboard:
 	@mkdir -p $(BUILD_DIR)/drivers/keyboard
+
+$(BUILD_DIR)/proc:
+	@mkdir -p $(BUILD_DIR)/proc
 
 # =============================================================================
 # Run in QEMU

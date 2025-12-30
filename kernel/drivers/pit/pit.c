@@ -15,6 +15,7 @@
 #include "../../include/drivers/pic.h"
 #include "../../include/interrupts/irq.h"
 #include "../../include/interrupts/idt.h"
+#include "../../include/proc/sched.h"
 #include "../../include/kernel.h"
 #include "../vga/vga.h"
 
@@ -36,12 +37,13 @@ static volatile uint64_t tick_count = 0;
  * Called 100 times per second.
  */
 static void pit_irq_handler(registers_t* regs) {
-    (void)regs;  /* Unused for now */
-
     /* Increment tick counter */
     tick_count++;
 
-    /* Future: scheduler tick, process accounting, etc. */
+    /* Call scheduler tick handler for preemption */
+    if (sched_is_running()) {
+        sched_tick(regs);
+    }
 }
 
 /* =============================================================================
