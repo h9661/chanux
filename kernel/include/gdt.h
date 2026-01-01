@@ -31,9 +31,15 @@
 #define GDT_KERNEL_CODE     0x08    /* Kernel code segment */
 #define GDT_KERNEL_DATA     0x10    /* Kernel data segment */
 #define GDT_TSS_SEL         0x18    /* TSS descriptor (16 bytes in 64-bit) */
+#define GDT_USER_DATA       0x28    /* User data segment (Ring 3) */
+#define GDT_USER_CODE       0x30    /* User code segment (Ring 3) */
+
+/* Selectors with RPL (Requested Privilege Level) for user mode */
+#define GDT_USER_DATA_RPL   0x2B    /* 0x28 | RPL 3 */
+#define GDT_USER_CODE_RPL   0x33    /* 0x30 | RPL 3 */
 
 /* Number of regular GDT entries (TSS takes 2 slots in 64-bit mode) */
-#define GDT_ENTRIES         5       /* null, code, data, tss_low, tss_high */
+#define GDT_ENTRIES         7       /* null, kcode, kdata, tss_low, tss_high, udata, ucode */
 
 /* =============================================================================
  * GDT Entry Structure (8 bytes)

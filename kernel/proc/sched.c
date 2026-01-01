@@ -25,6 +25,8 @@
 #include "../include/proc/process.h"
 #include "../include/kernel.h"
 #include "../include/gdt.h"
+#include "../include/drivers/pit.h"
+#include "../include/debug.h"
 #include "../drivers/vga/vga.h"
 
 /* =============================================================================
@@ -209,8 +211,8 @@ NORETURN void sched_start(void) {
     kprintf("Switching to first process: '%s' (PID %d)\n",
             first->name, (int)first->pid);
 
-    /* Perform initial context switch */
-    context_switch_first(first->rsp, first->kernel_stack_top);
+    /* Perform initial context switch (pass CR3 for user processes) */
+    context_switch_first(first->rsp, first->kernel_stack_top, first->pml4_phys);
 
     /* Should never reach here */
     PANIC("sched_start: context_switch_first returned");
@@ -225,6 +227,9 @@ void sched_tick(registers_t* regs) {
     (void)regs;  /* Unused in current implementation */
 
     if (!scheduler_running) return;
+
+    /* Wake up any sleeping processes whose wake time has passed */
+    process_wake_sleeping(pit_get_ticks());
 
     process_t* current = process_current();
     if (!current) return;
@@ -277,6 +282,10 @@ void schedule(void) {
         next = idle_process;
     }
 
+    DBG_SCHED("[SCHED] schedule: prev='%s' (PID %d, state=%d) -> next='%s' (PID %d)\n",
+              prev->name, (int)prev->pid, prev->state,
+              next->name, (int)next->pid);
+
     /* Same process - just reset time slice */
     if (next == prev) {
         next->time_slice = DEFAULT_TIME_SLICE;
@@ -298,8 +307,8 @@ void schedule(void) {
     extern void process_set_current(process_t* proc);
     process_set_current(next);
 
-    /* Perform context switch */
-    context_switch(&prev->rsp, next->rsp, next->kernel_stack_top);
+    /* Perform context switch (pass CR3 for user processes, 0 for kernel) */
+    context_switch(&prev->rsp, next->rsp, next->kernel_stack_top, next->pml4_phys);
 }
 
 /**

@@ -64,6 +64,7 @@ CR4_PGE             equ (1 << 7)    ; Page Global Enable
 EFER_MSR            equ 0xC0000080
 EFER_LME            equ (1 << 8)    ; Long Mode Enable
 EFER_LMA            equ (1 << 10)   ; Long Mode Active
+EFER_NXE            equ (1 << 11)   ; No-Execute Enable
 
 ; =============================================================================
 ; Page Table Entry Flags

@@ -67,6 +67,35 @@ static inline size_t vga_index(int x, int y) {
 #define VGA_DATA_REGISTER   0x3D5
 
 /* =============================================================================
+ * Serial Port for Debug Output
+ * =============================================================================
+ */
+
+#define SERIAL_PORT         0x3F8
+
+static int serial_initialized = 0;
+
+static void serial_init(void) {
+    outb(SERIAL_PORT + 1, 0x00);    /* Disable all interrupts */
+    outb(SERIAL_PORT + 3, 0x80);    /* Enable DLAB (set baud rate divisor) */
+    outb(SERIAL_PORT + 0, 0x03);    /* Set divisor to 3 (lo byte) 38400 baud */
+    outb(SERIAL_PORT + 1, 0x00);    /*                  (hi byte) */
+    outb(SERIAL_PORT + 3, 0x03);    /* 8 bits, no parity, one stop bit */
+    outb(SERIAL_PORT + 2, 0xC7);    /* Enable FIFO, clear them, with 14-byte threshold */
+    outb(SERIAL_PORT + 4, 0x0B);    /* IRQs enabled, RTS/DSR set */
+    serial_initialized = 1;
+}
+
+static void serial_putchar(char c) {
+    if (!serial_initialized) {
+        serial_init();
+    }
+    /* Wait for transmit buffer to be empty */
+    while ((inb(SERIAL_PORT + 5) & 0x20) == 0);
+    outb(SERIAL_PORT, c);
+}
+
+/* =============================================================================
  * Implementation
  * =============================================================================
  */
@@ -135,6 +164,9 @@ void vga_scroll(void) {
 }
 
 void vga_putchar(char c) {
+    /* Mirror output to serial for debugging */
+    serial_putchar(c);
+
     /* Handle special characters */
     switch (c) {
         case '\n':

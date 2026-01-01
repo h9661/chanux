@@ -51,6 +51,7 @@ typedef enum {
 
 #define PROCESS_FLAG_KERNEL     0x01    /* Kernel process (Ring 0) */
 #define PROCESS_FLAG_IDLE       0x02    /* System idle process */
+#define PROCESS_FLAG_USER       0x04    /* User process (Ring 3) */
 
 /* =============================================================================
  * Process Control Block (PCB)
@@ -95,6 +96,17 @@ typedef struct process {
 
     /* === Parent/Child (for future fork support) === */
     pid_t               parent_pid;                 /* Parent process ID */
+
+    /* === Sleep Support (Phase 5) === */
+    uint64_t            wake_tick;                  /* Tick to wake at (0 = not sleeping) */
+
+    /* === User Mode Support (Phase 5) === */
+    phys_addr_t         pml4_phys;                  /* Process page table physical address */
+    void*               user_stack;                 /* User stack base (virtual) */
+    uint64_t            user_stack_top;             /* User stack top (initial RSP) */
+    uint64_t            user_rsp;                   /* Saved user RSP during syscall */
+    void*               user_code;                  /* User code base (virtual) */
+    size_t              user_code_size;             /* User code size */
 } process_t;
 
 /* =============================================================================
@@ -172,6 +184,16 @@ void process_block(void);
  * @param pid Process ID to unblock
  */
 void process_unblock(pid_t pid);
+
+/**
+ * Wake up sleeping processes whose wake_tick has passed.
+ *
+ * Called from the timer tick handler to unblock processes
+ * that have finished sleeping.
+ *
+ * @param current_tick Current system tick count
+ */
+void process_wake_sleeping(uint64_t current_tick);
 
 /**
  * Get count of processes in a given state.

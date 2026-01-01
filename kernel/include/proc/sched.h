@@ -144,14 +144,16 @@ uint32_t sched_ready_count(void);
  * Perform a context switch between two processes.
  *
  * Saves callee-saved registers on the current stack, saves RSP to
- * *old_rsp_ptr, updates TSS.RSP0, loads the new RSP, and restores
- * callee-saved registers from the new stack.
+ * *old_rsp_ptr, updates TSS.RSP0, optionally switches CR3, loads
+ * the new RSP, and restores callee-saved registers from the new stack.
  *
  * @param old_rsp_ptr Pointer to save current RSP (in old process's PCB)
  * @param new_rsp     RSP value to load for new process
  * @param new_rsp0    RSP0 value for TSS (new process's kernel stack top)
+ * @param new_cr3     CR3 value for new process (0 = don't switch, kernel process)
  */
-extern void context_switch(uint64_t* old_rsp_ptr, uint64_t new_rsp, uint64_t new_rsp0);
+extern void context_switch(uint64_t* old_rsp_ptr, uint64_t new_rsp,
+                           uint64_t new_rsp0, uint64_t new_cr3);
 
 /**
  * Perform the initial context switch to the first process.
@@ -161,7 +163,8 @@ extern void context_switch(uint64_t* old_rsp_ptr, uint64_t new_rsp, uint64_t new
  *
  * @param new_rsp  RSP value for first process
  * @param new_rsp0 RSP0 value for TSS
+ * @param new_cr3  CR3 value for first process (0 = don't switch)
  */
-extern void context_switch_first(uint64_t new_rsp, uint64_t new_rsp0);
+extern void context_switch_first(uint64_t new_rsp, uint64_t new_rsp0, uint64_t new_cr3);
 
 #endif /* CHANUX_SCHED_H */

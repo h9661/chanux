@@ -166,4 +166,60 @@ phys_addr_t vmm_get_pml4(void);
  */
 void vmm_debug_print(void);
 
+/* =============================================================================
+ * User Mode Address Space Management (Phase 5)
+ * =============================================================================
+ */
+
+/* User space address limits */
+#define USER_SPACE_START    0x0000000000400000ULL   /* 4MB - avoid null pages */
+#define USER_SPACE_END      0x0000800000000000ULL   /* End of lower canonical half */
+#define USER_STACK_TOP      0x00007FFFFFFFE000ULL   /* Just below end of user space */
+#define USER_STACK_SIZE     (16 * PAGE_SIZE)        /* 64KB user stack */
+
+/**
+ * Create a new address space (PML4) for a user process.
+ * The new address space has kernel mappings copied (higher half)
+ * but no user-space mappings.
+ *
+ * @return Physical address of new PML4, or 0 on failure
+ */
+phys_addr_t vmm_create_address_space(void);
+
+/**
+ * Destroy an address space and free all associated page tables.
+ * Does NOT free the physical pages that were mapped - caller must do that.
+ *
+ * @param pml4_phys Physical address of PML4 to destroy
+ */
+void vmm_destroy_address_space(phys_addr_t pml4_phys);
+
+/**
+ * Switch to a different address space.
+ *
+ * @param pml4_phys Physical address of PML4 to switch to
+ */
+void vmm_switch_address_space(phys_addr_t pml4_phys);
+
+/**
+ * Map a page in a specific address space with user permissions.
+ *
+ * @param pml4_phys Physical address of target PML4
+ * @param virt      Virtual address to map
+ * @param phys      Physical address to map to
+ * @param flags     Page table entry flags (should include PTE_USER)
+ * @return true on success, false on failure
+ */
+bool vmm_map_user_page(phys_addr_t pml4_phys, virt_addr_t virt,
+                       phys_addr_t phys, uint64_t flags);
+
+/**
+ * Clone kernel mappings from one address space to another.
+ * Only copies the higher-half (kernel) PML4 entries.
+ *
+ * @param dst_pml4_phys Destination PML4 physical address
+ * @param src_pml4_phys Source PML4 physical address
+ */
+void vmm_clone_kernel_mappings(phys_addr_t dst_pml4_phys, phys_addr_t src_pml4_phys);
+
 #endif /* CHANUX_VMM_H */

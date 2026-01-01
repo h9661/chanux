@@ -2,16 +2,23 @@
  * =============================================================================
  * Chanux OS - Global Descriptor Table Implementation
  * =============================================================================
- * Sets up the GDT with kernel segments and TSS for 64-bit long mode.
+ * Sets up the GDT with kernel/user segments and TSS for 64-bit long mode.
  *
  * GDT Layout:
  *   Entry 0: Null descriptor (required)
- *   Entry 1: Kernel code segment (0x08)
- *   Entry 2: Kernel data segment (0x10)
+ *   Entry 1: Kernel code segment (0x08) - Ring 0
+ *   Entry 2: Kernel data segment (0x10) - Ring 0
  *   Entry 3-4: TSS descriptor (0x18, spans 2 entries in 64-bit mode)
+ *   Entry 5: User data segment (0x28) - Ring 3
+ *   Entry 6: User code segment (0x30) - Ring 3
+ *
+ * SYSCALL/SYSRET Requirements:
+ *   - STAR MSR bits [63:48] = 0x20 (user segment base - 8)
+ *   - SYSRET loads: CS = 0x20 + 16 = 0x30, SS = 0x20 + 8 = 0x28
+ *   - With RPL=3: CS = 0x33, SS = 0x2B
  *
  * The TSS provides:
- *   - RSP0 for ring transitions (future syscalls)
+ *   - RSP0 for ring transitions (syscalls, interrupts from Ring 3)
  *   - IST1 stack for double fault handling
  * =============================================================================
  */
@@ -168,6 +175,20 @@ void gdt_init(void) {
 
     /* Entry 3-4: TSS descriptor (selector 0x18, spans 2 entries) */
     gdt_set_tss(3, (uint64_t)&tss, sizeof(tss_t) - 1);
+
+    /* Entry 5: User data segment (selector 0x28, with RPL 0x2B) */
+    /* Data segment: writable, present, ring 3 */
+    gdt_set_entry(5, 0, 0xFFFFF,
+                  GDT_ACCESS_PRESENT | GDT_ACCESS_DPL3 | GDT_ACCESS_SEGMENT |
+                  GDT_ACCESS_RW,
+                  GDT_GRAN_4K);
+
+    /* Entry 6: User code segment (selector 0x30, with RPL 0x33) */
+    /* 64-bit code segment: executable, readable, present, ring 3 */
+    gdt_set_entry(6, 0, 0xFFFFF,
+                  GDT_ACCESS_PRESENT | GDT_ACCESS_DPL3 | GDT_ACCESS_SEGMENT |
+                  GDT_ACCESS_EXECUTABLE | GDT_ACCESS_RW,
+                  GDT_GRAN_LONG_MODE | GDT_GRAN_4K);
 
     /* Set up GDT pointer */
     gdtr.limit = sizeof(gdt) - 1;

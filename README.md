@@ -34,6 +34,16 @@ An educational x86_64 operating system built from scratch.
 - **Process API**: `process_create()`, `process_exit()`, `process_yield()`, `process_block()`/`unblock()`
 - **Timer Integration**: PIT IRQ0 triggers scheduler tick for preemption
 
+### Phase 5: User Mode and System Calls
+- **SYSCALL/SYSRET**: Fast system call mechanism via x86_64 MSRs (STAR, LSTAR, SFMASK)
+- **System Calls**: 6 implemented (exit, write, read, yield, getpid, sleep)
+- **User Processes**: Separate address space per process via PML4 page tables
+- **User Stack**: 64KB per-process stack at `0x7FFFFFFFE000` (grows down)
+- **User Code**: Loaded at `0x400000` with read-only permissions
+- **Ring 3 Execution**: User mode entry via IRETQ with proper GDT segments
+- **User Library**: Minimal libc with syscall wrappers (`puts()`, `print_int()`, etc.)
+- **Init Process**: First user program demonstrating syscalls
+
 ## Building
 
 ### Requirements
@@ -62,6 +72,12 @@ make clean
 
 # Show build configuration
 make info
+
+# Debug builds (verbose logging)
+make DEBUG=1              # Enable all debug output
+make DEBUG_SCHED=1        # Scheduler debug only
+make DEBUG_VMM=1          # VMM debug only
+make DEBUG_USER=1         # User mode debug only
 ```
 
 ## Project Structure
@@ -75,9 +91,11 @@ chanux/
 ├── kernel/
 │   ├── arch/x86_64/
 │   │   ├── boot.asm             # Kernel entry point
-│   │   ├── gdt.c                # GDT with TSS
+│   │   ├── gdt.c                # GDT with TSS and user segments
 │   │   ├── idt.asm              # ISR/IRQ stubs, IDT loading
-│   │   └── context.asm          # Context switch assembly
+│   │   ├── context.asm          # Context switch assembly
+│   │   ├── syscall.asm          # SYSCALL/SYSRET entry point
+│   │   └── user_entry.asm       # User mode entry (IRETQ)
 │   ├── interrupts/
 │   │   ├── idt.c                # IDT initialization
 │   │   ├── isr.c                # Exception handlers
@@ -94,10 +112,25 @@ chanux/
 │   ├── proc/
 │   │   ├── process.c            # Process management (PCB, create/exit)
 │   │   └── sched.c              # Round-robin scheduler
+│   ├── syscall/
+│   │   ├── syscall.c            # System call dispatcher
+│   │   ├── sys_process.c        # Process control syscalls
+│   │   └── sys_io.c             # I/O syscalls (read/write)
+│   ├── user/
+│   │   └── user_process.c       # User process creation
 │   ├── lib/
 │   │   └── string.c             # String utilities (memset, memcpy, etc.)
-│   ├── include/                 # Kernel headers
+│   ├── include/                 # Kernel headers (debug.h, syscall/, user/)
 │   └── kernel.c                 # Main kernel entry
+├── user/                        # User-space programs
+│   ├── include/syscall.h        # User syscall API
+│   ├── lib/
+│   │   ├── syscall.asm          # Raw SYSCALL invocation
+│   │   └── libc.c               # Minimal C library
+│   ├── init/
+│   │   ├── start.asm            # User program entry point
+│   │   └── init.c               # First user program (demo)
+│   └── linker.ld                # User program linker script
 ├── scripts/
 │   └── linker.ld                # Kernel linker script
 └── Makefile                     # Build system
@@ -109,7 +142,7 @@ chanux/
 - [x] **Phase 2**: Memory management (PMM, VMM, heap)
 - [x] **Phase 3**: Interrupts and I/O (IDT, GDT with TSS, PIC, PIT, keyboard)
 - [x] **Phase 4**: Process management (PCB, round-robin scheduler, context switching)
-- [ ] **Phase 5**: System calls and user mode
+- [x] **Phase 5**: User mode and system calls (SYSCALL/SYSRET, 6 syscalls, user processes)
 - [ ] **Phase 6**: File system and shell
 
 ## Architecture
@@ -121,8 +154,8 @@ BIOS → MBR (Stage 1) → Stage 2 → Protected Mode → Long Mode → kernel_m
        512 bytes        16KB      32-bit          64-bit
 
 kernel_main():
-  └→ VGA init → Memory init → Interrupt init → Process init → sched_start()
-                (PMM/VMM/Heap)  (GDT/IDT/PIC/PIT)  (idle + demo)   (never returns)
+  └→ VGA init → Memory init → GDT/TSS → IDT → PIC/PIT → SYSCALL init → Process init → sched_start()
+                (PMM/VMM/Heap)                          (MSRs)         (idle + user)  (never returns)
 ```
 
 ### Scheduler Architecture
@@ -148,13 +181,35 @@ Timer Interrupt (IRQ0, 100Hz)
 ### Memory Layout
 
 ```
-Virtual Address Space (Higher-Half Kernel):
-  0xFFFFFFFF80000000 - 0xFFFFFFFF80FFFFFF  Kernel code/data (16MB)
-  0xFFFFFFFF81000000 - 0xFFFFFFFF81FFFFFF  Kernel heap (16MB)
+Virtual Address Space:
+
+  User Space (Ring 3):
+    0x0000000000400000  User code (USER_CODE_BASE)
+    0x00007FFFFFFFE000  User stack top (64KB, grows down)
+
+  Kernel Space (Ring 0, Higher-Half):
+    0xFFFFFFFF80000000 - 0xFFFFFFFF80FFFFFF  Kernel code/data (16MB)
+    0xFFFFFFFF81000000 - 0xFFFFFFFF81FFFFFF  Kernel heap (16MB)
 
 Physical Memory:
   0x00000000 - 0x000FFFFF  Real mode area (1MB)
   0x00100000 - 0x001FFFFF  Kernel physical location (1MB+)
+```
+
+### System Call Interface
+
+| Number | Name    | Signature                                     |
+|--------|---------|-----------------------------------------------|
+| 0      | exit    | `void exit(int code)`                         |
+| 1      | write   | `ssize_t write(int fd, const void* buf, len)` |
+| 2      | read    | `ssize_t read(int fd, void* buf, len)`        |
+| 3      | yield   | `int yield(void)`                             |
+| 4      | getpid  | `pid_t getpid(void)`                          |
+| 5      | sleep   | `int sleep(uint64_t ms)`                      |
+
+```
+Calling Convention: RAX=syscall#, RDI/RSI/RDX/R10/R8/R9=args
+Return Value: RAX (negative = error)
 ```
 
 ### Interrupt Vectors
@@ -172,28 +227,35 @@ After boot, the kernel:
 1. Initializes VGA driver and displays banner
 2. Detects and displays memory map from E820
 3. Initializes PMM, VMM, and kernel heap
-4. Loads GDT with TSS (for double fault protection)
+4. Loads GDT with TSS and user segments (Ring 0 + Ring 3)
 5. Sets up IDT with exception handlers
 6. Remaps PIC and enables timer/keyboard IRQs
-7. Initializes process management (creates idle process PID 0)
-8. Creates demo processes and starts the round-robin scheduler
-9. Demo processes run concurrently, printing tick messages
+7. Initializes SYSCALL/SYSRET mechanism (MSR configuration)
+8. Creates idle process (PID 0) and demo kernel processes
+9. Creates user-mode init process from embedded binary
+10. Starts round-robin scheduler (preemptive multitasking)
 
-### Process Demo
+### User Mode Demo
 
-When the OS boots, it creates two demo processes that demonstrate preemptive multitasking:
+The OS demonstrates both kernel and user processes running concurrently:
 
 ```
-[Process 1] Started!
-[Process 2] Started!
+[SCHED] Starting scheduler with 3 ready processes
+[SCHED] Switching to first process: 'init' (PID 2)
+user: Process 2 entering user mode
+[init] Hello from user space! PID=2
+[init] Testing sleep syscall...
 [P1] tick 1
+[init] Woke up after sleep
 [P2] tick 1
-[P1] tick 2
-[P2] tick 2
+[init] Yielding...
 ...
 ```
 
-The processes are preempted by the timer interrupt every 100ms, showing the scheduler switching between them.
+The init process runs in Ring 3 (user mode), demonstrating:
+- System calls (write, sleep, yield, getpid)
+- Preemptive context switching between Ring 0 and Ring 3
+- Per-process address space isolation
 
 ## License
 

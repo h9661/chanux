@@ -19,7 +19,12 @@
 
 #define VGA_WIDTH   80
 #define VGA_HEIGHT  25
-#define VGA_MEMORY  0xB8000
+/*
+ * VGA buffer physical address is 0xB8000.
+ * We use the higher-half kernel mapping (0xFFFFFFFF80000000 + phys)
+ * so VGA works in both kernel and user process contexts.
+ */
+#define VGA_MEMORY  0xFFFFFFFF800B8000ULL
 
 /* =============================================================================
  * VGA Colors

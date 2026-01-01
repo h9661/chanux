@@ -202,6 +202,12 @@ pid_t process_create(const char* name, void (*entry)(void*), void* arg) {
         return (pid_t)-1;
     }
 
+    /* Clean up any old kernel stack from previous use of this slot */
+    if (proc->kernel_stack) {
+        kfree(proc->kernel_stack);
+        proc->kernel_stack = NULL;
+    }
+
     /* Allocate kernel stack */
     void* stack = kmalloc(KERNEL_STACK_SIZE);
     if (!stack) {
@@ -271,16 +277,13 @@ NORETURN void process_exit(int exit_code) {
     current_process->state = PROCESS_STATE_TERMINATED;
     current_process->exit_code = exit_code;
 
-    /* Free the kernel stack */
-    if (current_process->kernel_stack) {
-        kfree(current_process->kernel_stack);
-        current_process->kernel_stack = NULL;
-    }
+    /*
+     * IMPORTANT: Do NOT free kernel_stack here!
+     * We are still running on this stack. The stack will be freed
+     * when this process slot is reused in process_create().
+     */
 
-    /* Mark slot as reusable */
-    current_process->state = PROCESS_STATE_UNUSED;
-
-    /* Switch to another process */
+    /* Switch to another process (never returns for this process) */
     schedule();
 
     /* Should never reach here */
@@ -392,6 +395,26 @@ uint32_t process_count(int state) {
         }
     }
     return count;
+}
+
+/**
+ * Wake sleeping processes whose wake_tick has passed.
+ */
+void process_wake_sleeping(uint64_t current_tick) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        process_t* proc = &process_table[i];
+        /* Check if process is blocked and has a wake_tick set */
+        if (proc->state == PROCESS_STATE_BLOCKED && proc->wake_tick > 0) {
+            /* Check if it's time to wake up */
+            if (current_tick >= proc->wake_tick) {
+                /* Unblock the process */
+                proc->state = PROCESS_STATE_READY;
+                proc->wake_tick = 0;
+                proc->time_slice = DEFAULT_TIME_SLICE;
+                sched_add(proc);
+            }
+        }
+    }
 }
 
 /**

@@ -34,7 +34,18 @@
 #include "include/drivers/keyboard.h"
 #include "include/proc/process.h"
 #include "include/proc/sched.h"
+#include "include/syscall/syscall.h"
+#include "include/user/user.h"
 #include "drivers/vga/vga.h"
+
+/* =============================================================================
+ * Embedded User Init Program
+ * =============================================================================
+ * These symbols are created by objcopy from the user init binary.
+ */
+extern const char _user_init_start[];
+extern const char _user_init_end[];
+extern const char _user_init_size[];
 
 /* =============================================================================
  * Kernel Version Banner
@@ -382,7 +393,25 @@ void kernel_main(void* boot_info_ptr) {
     /* Initialize scheduler */
     sched_init();
 
-    /* Create demo processes */
+    /* ==========================================================================
+     * Step 6: Initialize System Call Interface (Phase 5)
+     * ==========================================================================
+     */
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[SYSCALL] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Initializing system call interface...\n");
+
+    /* Initialize SYSCALL/SYSRET MSRs and handler */
+    syscall_init();
+
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[SYSCALL] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("System call interface ready!\n");
+
+    /* Create demo kernel processes */
     process_create("demo_a", demo_process_a, (void*)1);
     process_create("demo_b", demo_process_b, (void*)2);
 
@@ -392,35 +421,66 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Process management ready!\n");
 
     /* ==========================================================================
-     * Phase 4 Complete - Process Management
+     * Step 7: Create First User Process (Phase 5)
      * ==========================================================================
      */
     kprintf("\n");
-    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[USER] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Creating first user process...\n");
+
+    /* Get the size of the embedded user init program */
+    size_t init_size = (size_t)((uintptr_t)_user_init_end - (uintptr_t)_user_init_start);
+    kprintf("[USER] Init program size: %d bytes\n", (int)init_size);
+
+    /* Create the init user process */
+    pid_t init_pid = user_process_create("init", _user_init_start, init_size);
+    if (init_pid != (pid_t)-1) {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        kprintf("[USER] ");
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        kprintf("User process 'init' created with PID %d\n", (int)init_pid);
+    } else {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        kprintf("[USER] ");
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        kprintf("Failed to create user process!\n");
+    }
+
+    /* ==========================================================================
+     * Phase 5 Complete - User Mode & System Calls
+     * ==========================================================================
+     */
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     kprintf("=================================================\n");
-    kprintf("  Phase 4 Complete: Process Management Ready!\n");
+    kprintf("  Phase 5 Complete: User Mode & System Calls\n");
     kprintf("=================================================\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("\n");
-    kprintf("Completed:\n");
-    kprintf("  [x] Physical Memory Manager (PMM)\n");
-    kprintf("  [x] Virtual Memory Manager (VMM)\n");
-    kprintf("  [x] Kernel Heap (kmalloc/kfree)\n");
-    kprintf("  [x] Interrupt Descriptor Table (IDT)\n");
-    kprintf("  [x] GDT with TSS (double fault protection)\n");
-    kprintf("  [x] PIC remapping (8259A)\n");
-    kprintf("  [x] Timer (PIT at 100Hz)\n");
-    kprintf("  [x] PS/2 Keyboard Driver\n");
-    kprintf("  [x] Process Management (PCB, create/exit)\n");
-    kprintf("  [x] Round-Robin Scheduler (preemptive)\n");
+    kprintf("Features:\n");
+    kprintf("  [x] Ring 3 GDT segments (user code/data)\n");
+    kprintf("  [x] SYSCALL/SYSRET MSR configuration\n");
+    kprintf("  [x] System call dispatcher and table\n");
+    kprintf("  [x] User pointer validation\n");
+    kprintf("  [x] Per-process address spaces (PML4)\n");
+    kprintf("  [x] User stack allocation\n");
+    kprintf("  [x] User mode entry (IRETQ)\n");
+    kprintf("  [x] Context switch CR3 handling\n");
+    kprintf("  [x] First user program (init)\n");
     kprintf("\n");
-    kprintf("Next steps (Phase 5):\n");
-    kprintf("  - User mode (Ring 3)\n");
-    kprintf("  - System calls\n");
+    kprintf("System Calls:\n");
+    kprintf("  0: exit(code)       - Terminate process\n");
+    kprintf("  1: write(fd,buf,n)  - Write to console\n");
+    kprintf("  2: read(fd,buf,n)   - Read from keyboard\n");
+    kprintf("  3: yield()          - Yield CPU\n");
+    kprintf("  4: getpid()         - Get process ID\n");
+    kprintf("  5: sleep(ms)        - Sleep for milliseconds\n");
     kprintf("\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("Starting scheduler with demo processes...\n\n");
+    kprintf("Starting scheduler with kernel and user processes...\n\n");
 
     /* ==========================================================================
      * Start the Scheduler

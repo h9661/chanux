@@ -214,10 +214,10 @@ protected_mode_entry:
     mov eax, PML4_ADDR
     mov cr3, eax
 
-    ; Enable Long Mode in EFER MSR
+    ; Enable Long Mode and NX (No-Execute) in EFER MSR
     mov ecx, EFER_MSR
     rdmsr
-    or eax, EFER_LME
+    or eax, EFER_LME | EFER_NXE
     wrmsr
 
     ; Enable paging (this activates long mode)
@@ -495,9 +495,10 @@ setup_page_tables:
     rep stosd
 
     ; ==========================================================================
-    ; Set up identity mapping for first 8MB (using 2MB huge pages)
+    ; Set up identity mapping for first 64MB (using 2MB huge pages)
     ; This maps virtual 0x0 -> physical 0x0
-    ; Required for: kernel (1MB), PMM bitmap (2MB), page tables (3MB), heap (4MB+)
+    ; Required for: kernel (1MB), PMM bitmap (2MB), page tables (3MB), heap (4MB+),
+    ;               user process page tables (8MB+)
     ; ==========================================================================
 
     ; PML4[0] -> PDPT
@@ -510,25 +511,18 @@ setup_page_tables:
     or eax, PAGE_FLAGS
     mov [PDPT_ADDR], eax
 
-    ; PD[0] -> 2MB huge page at physical 0x00000000 (0-2MB)
-    mov eax, 0x00000000
-    or eax, PAGE_FLAGS_HUGE
-    mov [PD_ADDR], eax
-
-    ; PD[1] -> 2MB huge page at physical 0x00200000 (2-4MB)
-    mov eax, 0x00200000
-    or eax, PAGE_FLAGS_HUGE
-    mov [PD_ADDR + 8], eax
-
-    ; PD[2] -> 2MB huge page at physical 0x00400000 (4-6MB)
-    mov eax, 0x00400000
-    or eax, PAGE_FLAGS_HUGE
-    mov [PD_ADDR + 16], eax
-
-    ; PD[3] -> 2MB huge page at physical 0x00600000 (6-8MB)
-    mov eax, 0x00600000
-    or eax, PAGE_FLAGS_HUGE
-    mov [PD_ADDR + 24], eax
+    ; Map 64MB using 32 x 2MB huge pages (PD[0] through PD[31])
+    mov ecx, 32                 ; 32 entries = 64MB
+    mov edi, PD_ADDR
+    xor eax, eax                ; Start at physical 0x00000000
+.map_pd_entries:
+    mov ebx, eax
+    or ebx, PAGE_FLAGS_HUGE
+    mov [edi], ebx
+    mov dword [edi + 4], 0      ; High 32 bits = 0
+    add edi, 8                  ; Next PD entry
+    add eax, 0x200000           ; Next 2MB region
+    loop .map_pd_entries
 
     ; ==========================================================================
     ; Set up higher-half mapping for kernel
