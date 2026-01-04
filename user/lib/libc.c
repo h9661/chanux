@@ -62,6 +62,71 @@ int sleep(uint64_t ms) {
 }
 
 /* =============================================================================
+ * File System Wrappers (Phase 6)
+ * =============================================================================
+ */
+
+/**
+ * Open a file.
+ */
+int open(const char* path, int flags) {
+    return (int)syscall2(SYS_OPEN, path, flags);
+}
+
+/**
+ * Close a file descriptor.
+ */
+int close(int fd) {
+    return (int)syscall1(SYS_CLOSE, fd);
+}
+
+/**
+ * Seek to position in file.
+ */
+ssize_t lseek(int fd, ssize_t offset, int whence) {
+    return (ssize_t)syscall3(SYS_LSEEK, fd, offset, whence);
+}
+
+/**
+ * Get file status by path.
+ */
+int stat(const char* path, stat_t* buf) {
+    return (int)syscall2(SYS_STAT, path, buf);
+}
+
+/**
+ * Get file status by file descriptor.
+ */
+int fstat(int fd, stat_t* buf) {
+    return (int)syscall2(SYS_FSTAT, fd, buf);
+}
+
+/**
+ * Read directory entry.
+ */
+int readdir_r(int fd, dirent_t* entry, int index) {
+    return (int)syscall3(SYS_READDIR, fd, entry, index);
+}
+
+/**
+ * Get current working directory.
+ */
+char* getcwd(char* buf, size_t size) {
+    int result = (int)syscall2(SYS_GETCWD, buf, size);
+    if (result < 0) {
+        return NULL;
+    }
+    return buf;
+}
+
+/**
+ * Change current working directory.
+ */
+int chdir(const char* path) {
+    return (int)syscall1(SYS_CHDIR, path);
+}
+
+/* =============================================================================
  * String Functions
  * =============================================================================
  */

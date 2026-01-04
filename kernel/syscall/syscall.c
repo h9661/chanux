@@ -63,24 +63,52 @@ static int64_t sys_yield_wrapper(uint64_t, uint64_t, uint64_t, uint64_t, uint64_
 static int64_t sys_getpid_wrapper(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 static int64_t sys_sleep_wrapper(uint64_t ms, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
+/* Phase 6: File system syscall wrappers */
+static int64_t sys_open_wrapper(uint64_t path, uint64_t flags, uint64_t, uint64_t, uint64_t, uint64_t);
+static int64_t sys_close_wrapper(uint64_t fd, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+static int64_t sys_lseek_wrapper(uint64_t fd, uint64_t offset, uint64_t whence, uint64_t, uint64_t, uint64_t);
+static int64_t sys_stat_wrapper(uint64_t path, uint64_t buf, uint64_t, uint64_t, uint64_t, uint64_t);
+static int64_t sys_fstat_wrapper(uint64_t fd, uint64_t buf, uint64_t, uint64_t, uint64_t, uint64_t);
+static int64_t sys_readdir_wrapper(uint64_t fd, uint64_t entry, uint64_t index, uint64_t, uint64_t, uint64_t);
+static int64_t sys_getcwd_wrapper(uint64_t buf, uint64_t size, uint64_t, uint64_t, uint64_t, uint64_t);
+static int64_t sys_chdir_wrapper(uint64_t path, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+
 /* Syscall handler table */
 static syscall_fn_t syscall_table[SYS_MAX] = {
-    [SYS_EXIT]   = sys_exit_wrapper,
-    [SYS_WRITE]  = sys_write_wrapper,
-    [SYS_READ]   = sys_read_wrapper,
-    [SYS_YIELD]  = sys_yield_wrapper,
-    [SYS_GETPID] = sys_getpid_wrapper,
-    [SYS_SLEEP]  = sys_sleep_wrapper,
+    [SYS_EXIT]    = sys_exit_wrapper,
+    [SYS_WRITE]   = sys_write_wrapper,
+    [SYS_READ]    = sys_read_wrapper,
+    [SYS_YIELD]   = sys_yield_wrapper,
+    [SYS_GETPID]  = sys_getpid_wrapper,
+    [SYS_SLEEP]   = sys_sleep_wrapper,
+    /* Phase 6: File system syscalls */
+    [SYS_OPEN]    = sys_open_wrapper,
+    [SYS_CLOSE]   = sys_close_wrapper,
+    [SYS_LSEEK]   = sys_lseek_wrapper,
+    [SYS_STAT]    = sys_stat_wrapper,
+    [SYS_FSTAT]   = sys_fstat_wrapper,
+    [SYS_READDIR] = sys_readdir_wrapper,
+    [SYS_GETCWD]  = sys_getcwd_wrapper,
+    [SYS_CHDIR]   = sys_chdir_wrapper,
 };
 
 /* Syscall names for debugging */
 static const char* syscall_names[SYS_MAX] = {
-    [SYS_EXIT]   = "exit",
-    [SYS_WRITE]  = "write",
-    [SYS_READ]   = "read",
-    [SYS_YIELD]  = "yield",
-    [SYS_GETPID] = "getpid",
-    [SYS_SLEEP]  = "sleep",
+    [SYS_EXIT]    = "exit",
+    [SYS_WRITE]   = "write",
+    [SYS_READ]    = "read",
+    [SYS_YIELD]   = "yield",
+    [SYS_GETPID]  = "getpid",
+    [SYS_SLEEP]   = "sleep",
+    /* Phase 6: File system syscalls */
+    [SYS_OPEN]    = "open",
+    [SYS_CLOSE]   = "close",
+    [SYS_LSEEK]   = "lseek",
+    [SYS_STAT]    = "stat",
+    [SYS_FSTAT]   = "fstat",
+    [SYS_READDIR] = "readdir",
+    [SYS_GETCWD]  = "getcwd",
+    [SYS_CHDIR]   = "chdir",
 };
 
 /* =============================================================================
@@ -245,4 +273,81 @@ static int64_t sys_sleep_wrapper(uint64_t ms, uint64_t arg2 UNUSED,
                                  uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
                                  uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
     return sys_sleep(ms);
+}
+
+/* =============================================================================
+ * Phase 6: File System Syscall Wrappers
+ * =============================================================================
+ */
+
+/**
+ * sys_open wrapper - open a file
+ */
+static int64_t sys_open_wrapper(uint64_t path, uint64_t flags,
+                                uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_open((const char*)path, (int)flags);
+}
+
+/**
+ * sys_close wrapper - close a file descriptor
+ */
+static int64_t sys_close_wrapper(uint64_t fd, uint64_t arg2 UNUSED,
+                                 uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                 uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_close((int)fd);
+}
+
+/**
+ * sys_lseek wrapper - seek in file
+ */
+static int64_t sys_lseek_wrapper(uint64_t fd, uint64_t offset, uint64_t whence,
+                                 uint64_t arg4 UNUSED, uint64_t arg5 UNUSED,
+                                 uint64_t arg6 UNUSED) {
+    return sys_lseek((int)fd, (int64_t)offset, (int)whence);
+}
+
+/**
+ * sys_stat wrapper - get file status by path
+ */
+static int64_t sys_stat_wrapper(uint64_t path, uint64_t buf,
+                                uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_stat((const char*)path, (void*)buf);
+}
+
+/**
+ * sys_fstat wrapper - get file status by fd
+ */
+static int64_t sys_fstat_wrapper(uint64_t fd, uint64_t buf,
+                                 uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                 uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_fstat((int)fd, (void*)buf);
+}
+
+/**
+ * sys_readdir wrapper - read directory entry
+ */
+static int64_t sys_readdir_wrapper(uint64_t fd, uint64_t entry, uint64_t index,
+                                   uint64_t arg4 UNUSED, uint64_t arg5 UNUSED,
+                                   uint64_t arg6 UNUSED) {
+    return sys_readdir((int)fd, (void*)entry, (int)index);
+}
+
+/**
+ * sys_getcwd wrapper - get current working directory
+ */
+static int64_t sys_getcwd_wrapper(uint64_t buf, uint64_t size,
+                                  uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                  uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_getcwd((char*)buf, (size_t)size);
+}
+
+/**
+ * sys_chdir wrapper - change working directory
+ */
+static int64_t sys_chdir_wrapper(uint64_t path, uint64_t arg2 UNUSED,
+                                 uint64_t arg3 UNUSED, uint64_t arg4 UNUSED,
+                                 uint64_t arg5 UNUSED, uint64_t arg6 UNUSED) {
+    return sys_chdir((const char*)path);
 }

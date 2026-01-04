@@ -36,13 +36,23 @@ An educational x86_64 operating system built from scratch.
 
 ### Phase 5: User Mode and System Calls
 - **SYSCALL/SYSRET**: Fast system call mechanism via x86_64 MSRs (STAR, LSTAR, SFMASK)
-- **System Calls**: 6 implemented (exit, write, read, yield, getpid, sleep)
+- **System Calls**: 6 core syscalls (exit, write, read, yield, getpid, sleep)
 - **User Processes**: Separate address space per process via PML4 page tables
 - **User Stack**: 64KB per-process stack at `0x7FFFFFFFE000` (grows down)
 - **User Code**: Loaded at `0x400000` with read-only permissions
 - **Ring 3 Execution**: User mode entry via IRETQ with proper GDT segments
 - **User Library**: Minimal libc with syscall wrappers (`puts()`, `print_int()`, etc.)
-- **Init Process**: First user program demonstrating syscalls
+
+### Phase 6: File System and Shell
+- **Virtual File System (VFS)**: Abstraction layer for filesystem operations
+- **RAMFS**: In-memory filesystem (4MB capacity, 256 max files)
+  - Superblock, inode table, data blocks
+  - Direct block allocation (12 blocks per file, 48KB max)
+  - Directory support with `.` and `..` entries
+- **File Descriptors**: Per-process FD table (16 per process)
+- **Path Resolution**: Absolute and relative path handling with normalization
+- **Interactive Shell**: Command-line interface with 8 built-in commands
+- **File Syscalls**: open, close, lseek, stat, fstat, readdir, getcwd, chdir
 
 ## Building
 
@@ -112,15 +122,22 @@ chanux/
 │   ├── proc/
 │   │   ├── process.c            # Process management (PCB, create/exit)
 │   │   └── sched.c              # Round-robin scheduler
+│   ├── fs/                      # File system
+│   │   ├── vfs.c                # Virtual File System layer
+│   │   ├── ramfs.c              # RAM filesystem implementation
+│   │   ├── file.c               # File descriptor management
+│   │   └── path.c               # Path utilities
 │   ├── syscall/
 │   │   ├── syscall.c            # System call dispatcher
 │   │   ├── sys_process.c        # Process control syscalls
-│   │   └── sys_io.c             # I/O syscalls (read/write)
+│   │   ├── sys_io.c             # I/O syscalls (read/write)
+│   │   └── sys_fs.c             # File system syscalls
 │   ├── user/
 │   │   └── user_process.c       # User process creation
 │   ├── lib/
 │   │   └── string.c             # String utilities (memset, memcpy, etc.)
-│   ├── include/                 # Kernel headers (debug.h, syscall/, user/)
+│   ├── include/                 # Kernel headers
+│   │   └── fs/                  # VFS, RAMFS, file headers
 │   └── kernel.c                 # Main kernel entry
 ├── user/                        # User-space programs
 │   ├── include/syscall.h        # User syscall API
@@ -130,6 +147,9 @@ chanux/
 │   ├── init/
 │   │   ├── start.asm            # User program entry point
 │   │   └── init.c               # First user program (demo)
+│   ├── shell/                   # Interactive shell
+│   │   ├── start.asm            # Shell entry point
+│   │   └── shell.c              # Shell implementation
 │   └── linker.ld                # User program linker script
 ├── scripts/
 │   └── linker.ld                # Kernel linker script
@@ -143,7 +163,8 @@ chanux/
 - [x] **Phase 3**: Interrupts and I/O (IDT, GDT with TSS, PIC, PIT, keyboard)
 - [x] **Phase 4**: Process management (PCB, round-robin scheduler, context switching)
 - [x] **Phase 5**: User mode and system calls (SYSCALL/SYSRET, 6 syscalls, user processes)
-- [ ] **Phase 6**: File system and shell
+- [x] **Phase 6**: File system and shell (VFS, RAMFS, interactive shell)
+- [ ] **Phase 7**: Extended filesystem (file deletion, mkdir, permissions)
 
 ## Architecture
 
@@ -154,8 +175,8 @@ BIOS → MBR (Stage 1) → Stage 2 → Protected Mode → Long Mode → kernel_m
        512 bytes        16KB      32-bit          64-bit
 
 kernel_main():
-  └→ VGA init → Memory init → GDT/TSS → IDT → PIC/PIT → SYSCALL init → Process init → sched_start()
-                (PMM/VMM/Heap)                          (MSRs)         (idle + user)  (never returns)
+  └→ VGA init → Memory init → GDT/TSS → IDT → PIC/PIT → SYSCALL init → RAMFS init → Shell load → sched_start()
+                (PMM/VMM/Heap)                          (MSRs)         (create /bin) (from RAMFS) (never returns)
 ```
 
 ### Scheduler Architecture
@@ -206,11 +227,32 @@ Physical Memory:
 | 3      | yield   | `int yield(void)`                             |
 | 4      | getpid  | `pid_t getpid(void)`                          |
 | 5      | sleep   | `int sleep(uint64_t ms)`                      |
+| 6      | open    | `int open(const char* path, int flags)`       |
+| 7      | close   | `int close(int fd)`                           |
+| 8      | lseek   | `off_t lseek(int fd, off_t offset, int whence)` |
+| 9      | stat    | `int stat(const char* path, struct stat* buf)` |
+| 10     | fstat   | `int fstat(int fd, struct stat* buf)`         |
+| 11     | readdir | `int readdir(int fd, struct dirent* ent, int idx)` |
+| 12     | getcwd  | `int getcwd(char* buf, size_t size)`          |
+| 13     | chdir   | `int chdir(const char* path)`                 |
 
 ```
 Calling Convention: RAX=syscall#, RDI/RSI/RDX/R10/R8/R9=args
 Return Value: RAX (negative = error)
 ```
+
+### Shell Commands
+
+| Command | Description |
+|---------|-------------|
+| `help` | List available commands |
+| `echo [args]` | Print arguments to stdout |
+| `cat <file>` | Display file contents |
+| `ls [dir]` | List directory contents |
+| `pwd` | Print working directory |
+| `cd <dir>` | Change current directory |
+| `clear` | Clear the screen |
+| `exit` | Exit shell (halt system) |
 
 ### Interrupt Vectors
 
@@ -231,31 +273,71 @@ After boot, the kernel:
 5. Sets up IDT with exception handlers
 6. Remaps PIC and enables timer/keyboard IRQs
 7. Initializes SYSCALL/SYSRET mechanism (MSR configuration)
-8. Creates idle process (PID 0) and demo kernel processes
-9. Creates user-mode init process from embedded binary
-10. Starts round-robin scheduler (preemptive multitasking)
+8. Initializes RAMFS and creates filesystem structure
+9. Creates `/bin` directory and demo files (`/hello.txt`, `/README`)
+10. Loads interactive shell from embedded binary
+11. Starts round-robin scheduler (preemptive multitasking)
 
-### User Mode Demo
+### Interactive Shell
 
-The OS demonstrates both kernel and user processes running concurrently:
+The OS boots into an interactive shell where users can navigate the filesystem:
 
 ```
-[SCHED] Starting scheduler with 3 ready processes
-[SCHED] Switching to first process: 'init' (PID 2)
-user: Process 2 entering user mode
-[init] Hello from user space! PID=2
-[init] Testing sleep syscall...
-[P1] tick 1
-[init] Woke up after sleep
-[P2] tick 1
-[init] Yielding...
-...
+================================================================================
+                            Welcome to Chanux OS!
+                        A simple educational OS kernel
+================================================================================
+chanux:/$ help
+Available commands:
+  help       - Show this help message
+  echo       - Print arguments
+  cat        - Display file contents
+  ls         - List directory
+  pwd        - Print working directory
+  cd         - Change directory
+  clear      - Clear screen
+  exit       - Exit shell
+chanux:/$ ls
+.
+..
+bin
+hello.txt
+README
+chanux:/$ cat hello.txt
+Hello from Chanux OS!
+chanux:/$ cd bin
+chanux:/bin$ pwd
+/bin
+chanux:/bin$
 ```
 
-The init process runs in Ring 3 (user mode), demonstrating:
-- System calls (write, sleep, yield, getpid)
-- Preemptive context switching between Ring 0 and Ring 3
-- Per-process address space isolation
+The shell demonstrates:
+- File system navigation (ls, cd, pwd)
+- File reading (cat)
+- Path resolution (absolute and relative paths)
+- Per-process current working directory
+- All 14 system calls working together
+
+### File System Architecture
+
+```
+RAMFS Layout (4MB total):
+  Block 0:        Superblock (magic, counts, allocation bitmaps)
+  Blocks 1-8:     Inode table (256 inodes × 128 bytes each)
+  Blocks 9-1023:  Data blocks (4KB each, ~4MB storage)
+
+Inode Structure (128 bytes):
+  ├── Type (file=1, directory=2)
+  ├── Size, permissions (rwx), link count
+  ├── Timestamps (created, modified, accessed)
+  ├── 12 direct block pointers (48KB max per file)
+  └── Owner UID/GID
+
+VFS Layer:
+  ├── Vnode table (cached inodes with reference counting)
+  ├── File table (open files with position tracking)
+  └── Per-process FD table (16 descriptors per process)
+```
 
 ## License
 

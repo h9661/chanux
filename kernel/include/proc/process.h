@@ -21,6 +21,9 @@
 #include "../types.h"
 #include "../interrupts/isr.h"
 
+/* Forward declaration for filesystem support */
+struct fd_table;
+
 /* =============================================================================
  * Configuration Constants
  * =============================================================================
@@ -30,6 +33,7 @@
 #define PROCESS_NAME_MAX    32      /* Maximum process name length */
 #define KERNEL_STACK_SIZE   8192    /* 8KB kernel stack per process */
 #define DEFAULT_TIME_SLICE  10      /* Time slice in ticks (100ms at 100Hz) */
+#define CWD_MAX             256     /* Maximum current working directory length */
 
 /* =============================================================================
  * Process States
@@ -107,6 +111,10 @@ typedef struct process {
     uint64_t            user_rsp;                   /* Saved user RSP during syscall */
     void*               user_code;                  /* User code base (virtual) */
     size_t              user_code_size;             /* User code size */
+
+    /* === File System Support (Phase 6) === */
+    struct fd_table*    fd_table;                   /* Per-process file descriptor table */
+    char                cwd[CWD_MAX];               /* Current working directory */
 } process_t;
 
 /* =============================================================================

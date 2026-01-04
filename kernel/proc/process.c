@@ -20,6 +20,7 @@
 #include "../include/proc/sched.h"
 #include "../include/mm/heap.h"
 #include "../include/kernel.h"
+#include "../include/fs/file.h"
 #include "../drivers/vga/vga.h"
 #include "../include/gdt.h"
 
@@ -142,6 +143,9 @@ void process_init(void) {
         process_table[i].state = PROCESS_STATE_UNUSED;
         process_table[i].pid = 0;
         process_table[i].kernel_stack = NULL;
+        process_table[i].fd_table = NULL;
+        process_table[i].cwd[0] = '/';
+        process_table[i].cwd[1] = '\0';
     }
 
     /* Reset PID counter */
@@ -178,6 +182,14 @@ void process_init(void) {
     /* Set up initial stack frame */
     setup_initial_stack(idle);
 
+    /* Initialize file descriptor table for idle process */
+    idle->fd_table = fd_table_create();
+    if (idle->fd_table) {
+        fd_init_stdio(idle->fd_table);
+    }
+    idle->cwd[0] = '/';
+    idle->cwd[1] = '\0';
+
     /* Idle process is special - it's the initial current process */
     current_process = idle;
 
@@ -206,6 +218,12 @@ pid_t process_create(const char* name, void (*entry)(void*), void* arg) {
     if (proc->kernel_stack) {
         kfree(proc->kernel_stack);
         proc->kernel_stack = NULL;
+    }
+
+    /* Clean up any old fd_table from previous use of this slot */
+    if (proc->fd_table) {
+        fd_table_destroy(proc->fd_table);
+        proc->fd_table = NULL;
     }
 
     /* Allocate kernel stack */
@@ -240,6 +258,20 @@ pid_t process_create(const char* name, void (*entry)(void*), void* arg) {
     /* Set up initial stack frame */
     setup_initial_stack(proc);
 
+    /* Initialize file descriptor table */
+    proc->fd_table = fd_table_create();
+    if (proc->fd_table) {
+        fd_init_stdio(proc->fd_table);
+    }
+
+    /* Set current working directory (inherit from parent or use root) */
+    if (current_process && current_process->cwd[0]) {
+        str_copy(proc->cwd, current_process->cwd, CWD_MAX);
+    } else {
+        proc->cwd[0] = '/';
+        proc->cwd[1] = '\0';
+    }
+
     /* Add to scheduler's run queue */
     sched_add(proc);
 
@@ -272,6 +304,12 @@ NORETURN void process_exit(int exit_code) {
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("Process '%s' (PID %d) exiting with code %d\n",
             current_process->name, (int)current_process->pid, exit_code);
+
+    /* Clean up file descriptor table */
+    if (current_process->fd_table) {
+        fd_table_destroy(current_process->fd_table);
+        current_process->fd_table = NULL;
+    }
 
     /* Mark as terminated */
     current_process->state = PROCESS_STATE_TERMINATED;

@@ -6,10 +6,11 @@
  *   - sys_write: Write data to a file descriptor
  *   - sys_read: Read data from a file descriptor
  *
- * Currently supported file descriptors:
+ * Supported file descriptors:
  *   - 0 (stdin):  Keyboard input
  *   - 1 (stdout): VGA console output
  *   - 2 (stderr): VGA console output (same as stdout)
+ *   - 3+: VFS file operations (Phase 6)
  * =============================================================================
  */
 
@@ -17,6 +18,9 @@
 #include "kernel.h"
 #include "drivers/vga/vga.h"
 #include "drivers/keyboard.h"
+#include "fs/vfs.h"
+#include "fs/file.h"
+#include "proc/process.h"
 
 /* =============================================================================
  * User Pointer Validation
@@ -103,9 +107,21 @@ int64_t sys_write(int fd, const void* buf, size_t len) {
             /* Cannot write to stdin */
             return -EBADF;
 
-        default:
-            /* Invalid file descriptor */
-            return -EBADF;
+        default: {
+            /* File descriptor > 2: route to VFS */
+            process_t* proc = process_current();
+            if (!proc || !proc->fd_table) {
+                return -EBADF;
+            }
+            if (fd < 0 || fd >= MAX_FD_PER_PROCESS) {
+                return -EBADF;
+            }
+            file_t* file = proc->fd_table->entries[fd];
+            if (!file) {
+                return -EBADF;
+            }
+            return vfs_write(file, buf, len);
+        }
     }
 }
 
@@ -163,8 +179,20 @@ int64_t sys_read(int fd, void* buf, size_t len) {
             /* Cannot read from stdout/stderr */
             return -EBADF;
 
-        default:
-            /* Invalid file descriptor */
-            return -EBADF;
+        default: {
+            /* File descriptor > 2: route to VFS */
+            process_t* proc = process_current();
+            if (!proc || !proc->fd_table) {
+                return -EBADF;
+            }
+            if (fd < 0 || fd >= MAX_FD_PER_PROCESS) {
+                return -EBADF;
+            }
+            file_t* file = proc->fd_table->entries[fd];
+            if (!file) {
+                return -EBADF;
+            }
+            return vfs_read(file, buf, len);
+        }
     }
 }

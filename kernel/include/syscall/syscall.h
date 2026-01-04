@@ -34,7 +34,17 @@
 #define SYS_GETPID      4       /* pid_t getpid(void) */
 #define SYS_SLEEP       5       /* int sleep(uint64_t ms) */
 
-#define SYS_MAX         6       /* Number of system calls */
+/* Phase 6: File system syscalls */
+#define SYS_OPEN        6       /* int open(const char* path, int flags) */
+#define SYS_CLOSE       7       /* int close(int fd) */
+#define SYS_LSEEK       8       /* off_t lseek(int fd, off_t offset, int whence) */
+#define SYS_STAT        9       /* int stat(const char* path, struct stat* buf) */
+#define SYS_FSTAT       10      /* int fstat(int fd, struct stat* buf) */
+#define SYS_READDIR     11      /* int readdir(int fd, struct dirent* entry, int index) */
+#define SYS_GETCWD      12      /* int getcwd(char* buf, size_t size) */
+#define SYS_CHDIR       13      /* int chdir(const char* path) */
+
+#define SYS_MAX         14      /* Number of system calls */
 
 /* =============================================================================
  * Error Codes (negative return values)
@@ -47,6 +57,18 @@
 #define EINVAL          22      /* Invalid argument */
 #define EINTR           4       /* Interrupted system call */
 #define ENOMEM          12      /* Out of memory */
+
+/* Phase 6: Additional error codes */
+#define ENOENT          2       /* No such file or directory */
+#define EIO             5       /* I/O error */
+#define EACCES          13      /* Permission denied */
+#define EEXIST          17      /* File exists */
+#define ENOTDIR         20      /* Not a directory */
+#define EISDIR          21      /* Is a directory */
+#define EMFILE          24      /* Too many open files */
+#define ENOSPC          28      /* No space left on device */
+#define ERANGE          34      /* Result too large */
+#define ENAMETOOLONG    36      /* File name too long */
 
 /* =============================================================================
  * MSR Addresses
@@ -134,6 +156,16 @@ int64_t sys_sleep(uint64_t ms);
 /* I/O operations */
 int64_t sys_write(int fd, const void* buf, size_t len);
 int64_t sys_read(int fd, void* buf, size_t len);
+
+/* File system operations (Phase 6) */
+int64_t sys_open(const char* path, int flags);
+int64_t sys_close(int fd);
+int64_t sys_lseek(int fd, int64_t offset, int whence);
+int64_t sys_stat(const char* path, void* buf);
+int64_t sys_fstat(int fd, void* buf);
+int64_t sys_readdir(int fd, void* entry, int index);
+int64_t sys_getcwd(char* buf, size_t size);
+int64_t sys_chdir(const char* path);
 
 /* =============================================================================
  * Assembly Functions (defined in syscall.asm)

@@ -45,6 +45,68 @@ typedef int32_t pid_t;
 #define SYS_GETPID      4       /* pid_t getpid(void) */
 #define SYS_SLEEP       5       /* int sleep(uint64_t ms) */
 
+/* Phase 6: File system syscalls */
+#define SYS_OPEN        6       /* int open(const char* path, int flags) */
+#define SYS_CLOSE       7       /* int close(int fd) */
+#define SYS_LSEEK       8       /* off_t lseek(int fd, off_t offset, int whence) */
+#define SYS_STAT        9       /* int stat(const char* path, struct stat* buf) */
+#define SYS_FSTAT       10      /* int fstat(int fd, struct stat* buf) */
+#define SYS_READDIR     11      /* int readdir(int fd, struct dirent* entry, int index) */
+#define SYS_GETCWD      12      /* int getcwd(char* buf, size_t size) */
+#define SYS_CHDIR       13      /* int chdir(const char* path) */
+
+/* =============================================================================
+ * File Open Flags
+ * =============================================================================
+ */
+
+#define O_RDONLY        0x0001  /* Open for reading only */
+#define O_WRONLY        0x0002  /* Open for writing only */
+#define O_RDWR          0x0003  /* Open for reading and writing */
+#define O_CREAT         0x0100  /* Create file if not exists */
+#define O_TRUNC         0x0200  /* Truncate file to zero length */
+#define O_APPEND        0x0400  /* Append on each write */
+
+/* lseek whence values */
+#define SEEK_SET        0       /* Offset from beginning of file */
+#define SEEK_CUR        1       /* Offset from current position */
+#define SEEK_END        2       /* Offset from end of file */
+
+/* =============================================================================
+ * File Types (for stat)
+ * =============================================================================
+ */
+
+#define S_IFREG         1       /* Regular file */
+#define S_IFDIR         2       /* Directory */
+
+/* =============================================================================
+ * File System Structures
+ * =============================================================================
+ */
+
+/* Maximum filename length */
+#define NAME_MAX        255
+
+/* File status structure (simplified) */
+typedef struct stat {
+    uint32_t st_mode;           /* File type and permissions */
+    uint64_t st_size;           /* Total size in bytes */
+    uint64_t st_ino;            /* Inode number */
+    uint32_t st_nlink;          /* Number of hard links */
+    uint32_t st_uid;            /* Owner user ID */
+    uint32_t st_gid;            /* Owner group ID */
+    uint32_t st_blksize;        /* Block size for I/O */
+    uint64_t st_blocks;         /* Number of blocks allocated */
+} stat_t;
+
+/* Directory entry structure */
+typedef struct dirent {
+    uint32_t d_ino;             /* Inode number */
+    uint32_t d_type;            /* File type */
+    char     d_name[256];       /* Filename */
+} dirent_t;
+
 /* =============================================================================
  * Raw Syscall Interface
  * =============================================================================
@@ -139,6 +201,83 @@ pid_t getpid(void);
  * @return   0 on success, negative on error
  */
 int sleep(uint64_t ms);
+
+/* =============================================================================
+ * File System Functions (Phase 6)
+ * =============================================================================
+ */
+
+/**
+ * Open a file.
+ *
+ * @param path Path to the file
+ * @param flags Open flags (O_RDONLY, O_WRONLY, O_RDWR, O_CREAT)
+ * @return File descriptor on success, negative error on failure
+ */
+int open(const char* path, int flags);
+
+/**
+ * Close a file descriptor.
+ *
+ * @param fd File descriptor to close
+ * @return 0 on success, negative error on failure
+ */
+int close(int fd);
+
+/**
+ * Seek to position in file.
+ *
+ * @param fd File descriptor
+ * @param offset Offset in bytes
+ * @param whence SEEK_SET, SEEK_CUR, or SEEK_END
+ * @return New position on success, negative error on failure
+ */
+ssize_t lseek(int fd, ssize_t offset, int whence);
+
+/**
+ * Get file status by path.
+ *
+ * @param path Path to the file
+ * @param buf Pointer to stat structure
+ * @return 0 on success, negative error on failure
+ */
+int stat(const char* path, stat_t* buf);
+
+/**
+ * Get file status by file descriptor.
+ *
+ * @param fd File descriptor
+ * @param buf Pointer to stat structure
+ * @return 0 on success, negative error on failure
+ */
+int fstat(int fd, stat_t* buf);
+
+/**
+ * Read directory entry.
+ *
+ * @param fd File descriptor of open directory
+ * @param entry Pointer to dirent structure
+ * @param index Entry index to read
+ * @return 0 on success, -1 if no more entries, negative error on failure
+ */
+int readdir_r(int fd, dirent_t* entry, int index);
+
+/**
+ * Get current working directory.
+ *
+ * @param buf Buffer to store path
+ * @param size Size of buffer
+ * @return Pointer to buf on success, NULL on failure
+ */
+char* getcwd(char* buf, size_t size);
+
+/**
+ * Change current working directory.
+ *
+ * @param path Path to new directory
+ * @return 0 on success, negative error on failure
+ */
+int chdir(const char* path);
 
 /* =============================================================================
  * Convenience Functions

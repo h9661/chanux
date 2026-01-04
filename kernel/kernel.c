@@ -36,16 +36,19 @@
 #include "include/proc/sched.h"
 #include "include/syscall/syscall.h"
 #include "include/user/user.h"
+#include "include/fs/vfs.h"
+#include "include/fs/ramfs.h"
+#include "include/string.h"
 #include "drivers/vga/vga.h"
 
 /* =============================================================================
- * Embedded User Init Program
+ * Embedded Shell Program
  * =============================================================================
- * These symbols are created by objcopy from the user init binary.
+ * These symbols are created by objcopy from the user shell binary.
  */
-extern const char _user_init_start[];
-extern const char _user_init_end[];
-extern const char _user_init_size[];
+extern const char _user_shell_start[];
+extern const char _user_shell_end[];
+extern const char _user_shell_size[];
 
 /* =============================================================================
  * Kernel Version Banner
@@ -147,6 +150,63 @@ void mm_init(boot_info_t* boot_info) {
     kprintf("[MM] ");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("Memory Management initialized successfully!\n");
+}
+
+/* =============================================================================
+ * Filesystem Initialization (Phase 6)
+ * =============================================================================
+ */
+
+static void fs_init(void) {
+    kprintf("\n");
+    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+    kprintf("[FS] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Initializing filesystem...\n");
+
+    /* Initialize VFS and mount RAMFS as root */
+    vfs_init();
+
+    /* Create initial directories */
+    vfs_mkdir("/bin");
+    vfs_mkdir("/home");
+    vfs_mkdir("/tmp");
+
+    /* Create a welcome file */
+    vnode_t* file = NULL;
+    if (vfs_lookup("/hello.txt", &file) < 0) {
+        /* File doesn't exist, create it */
+        file_t* f = NULL;
+        if (vfs_open("/hello.txt", O_CREAT | O_WRONLY, &f) >= 0) {
+            const char* msg = "Welcome to Chanux OS!\n\n"
+                              "This is a simple educational operating system.\n"
+                              "Type 'help' for available commands.\n";
+            vfs_write(f, msg, strlen(msg));
+            vfs_close(f);
+        }
+    }
+
+    /* Create a README file */
+    file_t* readme = NULL;
+    if (vfs_open("/README", O_CREAT | O_WRONLY, &readme) >= 0) {
+        const char* msg = "=== Chanux OS ===\n\n"
+                          "An educational x86_64 operating system.\n\n"
+                          "Features:\n"
+                          "- 64-bit long mode\n"
+                          "- Virtual memory with paging\n"
+                          "- Preemptive multitasking\n"
+                          "- User/kernel mode separation\n"
+                          "- System calls (SYSCALL/SYSRET)\n"
+                          "- RAM-based filesystem\n"
+                          "- Interactive shell\n";
+        vfs_write(readme, msg, strlen(msg));
+        vfs_close(readme);
+    }
+
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintf("[FS] ");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    kprintf("Filesystem ready (RAMFS mounted at /)\n");
 }
 
 /* =============================================================================
@@ -378,7 +438,13 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Running in 64-bit Long Mode\n");
 
     /* ==========================================================================
-     * Step 5: Initialize Process Management (Phase 4)
+     * Step 5: Initialize Filesystem (Phase 6)
+     * ==========================================================================
+     */
+    fs_init();
+
+    /* ==========================================================================
+     * Step 6: Initialize Process Management (Phase 4)
      * ==========================================================================
      */
     kprintf("\n");
@@ -394,7 +460,7 @@ void kernel_main(void* boot_info_ptr) {
     sched_init();
 
     /* ==========================================================================
-     * Step 6: Initialize System Call Interface (Phase 5)
+     * Step 7: Initialize System Call Interface (Phase 5)
      * ==========================================================================
      */
     kprintf("\n");
@@ -421,66 +487,68 @@ void kernel_main(void* boot_info_ptr) {
     kprintf("Process management ready!\n");
 
     /* ==========================================================================
-     * Step 7: Create First User Process (Phase 5)
+     * Step 8: Create Shell User Process (Phase 6)
      * ==========================================================================
      */
     kprintf("\n");
     vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
     kprintf("[USER] ");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    kprintf("Creating first user process...\n");
+    kprintf("Creating shell user process...\n");
 
-    /* Get the size of the embedded user init program */
-    size_t init_size = (size_t)((uintptr_t)_user_init_end - (uintptr_t)_user_init_start);
-    kprintf("[USER] Init program size: %d bytes\n", (int)init_size);
+    /* Get the size of the embedded shell program */
+    size_t shell_size = (size_t)((uintptr_t)_user_shell_end - (uintptr_t)_user_shell_start);
+    kprintf("[USER] Shell program size: %d bytes\n", (int)shell_size);
 
-    /* Create the init user process */
-    pid_t init_pid = user_process_create("init", _user_init_start, init_size);
-    if (init_pid != (pid_t)-1) {
+    /* Create the shell user process */
+    pid_t shell_pid = user_process_create("shell", _user_shell_start, shell_size);
+    if (shell_pid != (pid_t)-1) {
         vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         kprintf("[USER] ");
         vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-        kprintf("User process 'init' created with PID %d\n", (int)init_pid);
+        kprintf("User process 'shell' created with PID %d\n", (int)shell_pid);
     } else {
         vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
         kprintf("[USER] ");
         vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-        kprintf("Failed to create user process!\n");
+        kprintf("Failed to create shell process!\n");
     }
 
     /* ==========================================================================
-     * Phase 5 Complete - User Mode & System Calls
+     * Phase 6 Complete - File System & Shell
      * ==========================================================================
      */
     kprintf("\n");
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     kprintf("=================================================\n");
-    kprintf("  Phase 5 Complete: User Mode & System Calls\n");
+    kprintf("  Phase 6 Complete: File System & Shell\n");
     kprintf("=================================================\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     kprintf("\n");
-    kprintf("Features:\n");
-    kprintf("  [x] Ring 3 GDT segments (user code/data)\n");
-    kprintf("  [x] SYSCALL/SYSRET MSR configuration\n");
-    kprintf("  [x] System call dispatcher and table\n");
-    kprintf("  [x] User pointer validation\n");
-    kprintf("  [x] Per-process address spaces (PML4)\n");
-    kprintf("  [x] User stack allocation\n");
-    kprintf("  [x] User mode entry (IRETQ)\n");
-    kprintf("  [x] Context switch CR3 handling\n");
-    kprintf("  [x] First user program (init)\n");
+    kprintf("Filesystem Features:\n");
+    kprintf("  [x] Virtual File System (VFS) layer\n");
+    kprintf("  [x] RAM-based filesystem (RAMFS) - 4MB\n");
+    kprintf("  [x] Inode-based file management\n");
+    kprintf("  [x] Directory support with path resolution\n");
+    kprintf("  [x] Per-process file descriptor tables\n");
+    kprintf("  [x] Per-process working directory (cwd)\n");
     kprintf("\n");
-    kprintf("System Calls:\n");
-    kprintf("  0: exit(code)       - Terminate process\n");
-    kprintf("  1: write(fd,buf,n)  - Write to console\n");
-    kprintf("  2: read(fd,buf,n)   - Read from keyboard\n");
-    kprintf("  3: yield()          - Yield CPU\n");
-    kprintf("  4: getpid()         - Get process ID\n");
-    kprintf("  5: sleep(ms)        - Sleep for milliseconds\n");
+    kprintf("Shell Commands:\n");
+    kprintf("  help    - Show available commands\n");
+    kprintf("  echo    - Print arguments\n");
+    kprintf("  cat     - Display file contents\n");
+    kprintf("  ls      - List directory contents\n");
+    kprintf("  pwd     - Print working directory\n");
+    kprintf("  cd      - Change directory\n");
+    kprintf("  clear   - Clear screen\n");
+    kprintf("  exit    - Exit shell\n");
+    kprintf("\n");
+    kprintf("File System Calls: open, close, read, write,\n");
+    kprintf("  lseek, stat, fstat, readdir, getcwd, chdir\n");
     kprintf("\n");
 
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    kprintf("Starting scheduler with kernel and user processes...\n\n");
+    kprintf("Starting scheduler with interactive shell...\n\n");
 
     /* ==========================================================================
      * Start the Scheduler

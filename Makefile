@@ -136,7 +136,12 @@ KERNEL_C_SRCS = $(KERNEL_DIR)/kernel.c \
                 $(KERNEL_DIR)/syscall/syscall.c \
                 $(KERNEL_DIR)/syscall/sys_process.c \
                 $(KERNEL_DIR)/syscall/sys_io.c \
-                $(KERNEL_DIR)/user/user_process.c
+                $(KERNEL_DIR)/syscall/sys_fs.c \
+                $(KERNEL_DIR)/user/user_process.c \
+                $(KERNEL_DIR)/fs/ramfs.c \
+                $(KERNEL_DIR)/fs/vfs.c \
+                $(KERNEL_DIR)/fs/path.c \
+                $(KERNEL_DIR)/fs/file.c
 
 # =============================================================================
 # User Program Configuration
@@ -169,9 +174,9 @@ USER_LDFLAGS = -T $(USER_DIR)/linker.ld \
 
 # User program source files
 USER_ASM_SRCS = $(USER_DIR)/lib/syscall.asm \
-                $(USER_DIR)/init/start.asm
+                $(USER_DIR)/shell/start.asm
 USER_C_SRCS = $(USER_DIR)/lib/libc.c \
-              $(USER_DIR)/init/init.c
+              $(USER_DIR)/shell/shell.c
 
 # User program object files
 USER_ASM_OBJS = $(patsubst $(USER_DIR)/%.asm,$(BUILD_DIR)/user_prog/%.o,$(USER_ASM_SRCS))
@@ -179,9 +184,9 @@ USER_C_OBJS = $(patsubst $(USER_DIR)/%.c,$(BUILD_DIR)/user_prog/%.o,$(USER_C_SRC
 USER_OBJS = $(USER_ASM_OBJS) $(USER_C_OBJS)
 
 # User program output
-USER_ELF = $(BUILD_DIR)/user_prog/init.elf
-USER_BIN = $(BUILD_DIR)/user_prog/init.bin
-USER_EMBED_OBJ = $(BUILD_DIR)/user_init_embed.o
+USER_ELF = $(BUILD_DIR)/user_prog/shell.elf
+USER_BIN = $(BUILD_DIR)/user_prog/shell.bin
+USER_EMBED_OBJ = $(BUILD_DIR)/user_shell_embed.o
 
 # =============================================================================
 # Object Files
@@ -272,7 +277,7 @@ $(BUILD_DIR)/user_prog/lib/%.o: $(USER_DIR)/lib/%.asm | $(BUILD_DIR)/user_prog/l
 	@echo "[ASM-USER] $<"
 	$(AS) $(ASFLAGS_USER) $< -o $@
 
-$(BUILD_DIR)/user_prog/init/%.o: $(USER_DIR)/init/%.asm | $(BUILD_DIR)/user_prog/init
+$(BUILD_DIR)/user_prog/shell/%.o: $(USER_DIR)/shell/%.asm | $(BUILD_DIR)/user_prog/shell
 	@echo "[ASM-USER] $<"
 	$(AS) $(ASFLAGS_USER) $< -o $@
 
@@ -308,15 +313,15 @@ $(USER_BIN): $(USER_ELF) | $(BUILD_DIR)/user_prog
 # =============================================================================
 
 $(USER_EMBED_OBJ): $(USER_BIN)
-	@echo "[EMBED] Embedding user program into kernel..."
+	@echo "[EMBED] Embedding shell program into kernel..."
 	cd $(BUILD_DIR) && $(OBJCOPY) -I binary -O elf64-x86-64 \
 		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
 		-B i386:x86-64 \
-		--redefine-sym _binary_user_prog_init_bin_start=_user_init_start \
-		--redefine-sym _binary_user_prog_init_bin_end=_user_init_end \
-		--redefine-sym _binary_user_prog_init_bin_size=_user_init_size \
-		user_prog/init.bin user_init_embed.o
-	@echo "[OK] User program embedded: $@"
+		--redefine-sym _binary_user_prog_shell_bin_start=_user_shell_start \
+		--redefine-sym _binary_user_prog_shell_bin_end=_user_shell_end \
+		--redefine-sym _binary_user_prog_shell_bin_size=_user_shell_size \
+		user_prog/shell.bin user_shell_embed.o
+	@echo "[OK] Shell program embedded: $@"
 
 # Note: USER_EMBED_OBJ is explicitly added in the KERNEL_ELF rule
 
@@ -330,8 +335,8 @@ $(BUILD_DIR)/user_prog:
 $(BUILD_DIR)/user_prog/lib:
 	@mkdir -p $(BUILD_DIR)/user_prog/lib
 
-$(BUILD_DIR)/user_prog/init:
-	@mkdir -p $(BUILD_DIR)/user_prog/init
+$(BUILD_DIR)/user_prog/shell:
+	@mkdir -p $(BUILD_DIR)/user_prog/shell
 
 # =============================================================================
 # Create Bootable Disk Image
@@ -393,6 +398,9 @@ $(BUILD_DIR)/syscall:
 
 $(BUILD_DIR)/user:
 	@mkdir -p $(BUILD_DIR)/user
+
+$(BUILD_DIR)/fs:
+	@mkdir -p $(BUILD_DIR)/fs
 
 # =============================================================================
 # Run in QEMU
